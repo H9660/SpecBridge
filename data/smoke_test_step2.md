@@ -1,9 +1,9 @@
-# Step 2 smoke test - 2026-10-26 22:35
+# Step 2 smoke test - 2026-10-26 23:36
 
 | # | Check | Result | Detail |
 |---|---|---|---|
 | 1 | Download folder exists and is outside OneDrive | PASS | C:\specbridge-work |
-| 2 | All repos on their frozen version, complete, unchanged | FAIL | billing-app: files changed or missing |
+| 2 | All repos on their frozen version, complete, unchanged | PASS | 5/5 OK |
 | 3 | Files the golden tickets touched are readable on disk | PASS | 256/256 files |
 | 4 | No downloaded repos inside the (OneDrive) project folder | PASS | 1.2 MB of project files; nested repos: none |
 | 5 | Secrets file (.env) is git-ignored | PASS | .gitignore |

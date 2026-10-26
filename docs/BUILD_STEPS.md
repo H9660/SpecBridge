@@ -5,6 +5,7 @@ What we are building, one step at a time. After each step: report blockers, run 
 **Product:** a Jira ticket goes in; SpecBridge reads the real code and writes UAT test cases to Confluence. Writing code (plan sections E5 and E7) is out of scope for now.
 **Brain:** cloud LLM through OpenRouter (default); local SLM can be switched in later.
 **Test code:** 5 OpenMRS 3 frontend repos, frozen at 31 March 2026, in `C:\specbridge-work`.
+**New to the project?** Follow [README.md](../README.md) first: it lists the original OpenMRS repo links with their frozen versions, how to clone them (one command: `py -3.12 scripts/setup_workspace.py`), and how to fill in `.env`.
 
 Plan section = section of [autonomous_software_engineering_plan.md](../autonomous_software_engineering_plan.md).
 
@@ -37,7 +38,7 @@ Steps 4-11 are the current proposal and may change; each is agreed with the user
 - **Did:** downloaded the repos to `C:\specbridge-work` (outside OneDrive), each on a `snapshot` branch; set up `.gitignore` and `.env`; copied the 63 tickets into project `SPEC` (SPEC-1..63) with answer-revealing links, attachments and mentions removed; 18 tickets that name code files are labelled `mentions-files` and scored separately.
 - **Files:** `scripts/setup_workspace.py`, `scripts/atlassian.py`, `scripts/import_tickets.py`, `.gitignore`, `.env.example`, `data/golden/jira_import_map.json`
 - **Smoke test:** `scripts/smoke_test_step2.py` -> `data/smoke_test_step2.md` - 16/16 passed after import.
-- **Open:** someone ran `yarn install` in `billing-app` (rewrote `yarn.lock`), so check 2 now fails - user to decide: restore `yarn.lock`, or ignore install files.
+- **Fixed 2026-10-26:** `billing-app` had its `.git` folder deleted and `yarn.lock` rewritten by `yarn install`. Restored in place: history re-downloaded, files reset to the frozen version (installed packages kept; the changed `yarn.lock` saved to `C:\specbridge-work-old\billing-app\`). Step 1 and Step 2 smoke tests pass again.
 
 ### Step 3 - Swappable brain (LLM / SLM)
 - **Did:** one interface (`ask`, `ask_json`) used by everything else; brain chosen in `config/brains.json` with `BRAIN=llm|slm`; any OpenRouter model via `BRAIN_MODEL`; JSON answers checked and retried once; every answer records brain, model, tokens, cost and time.
