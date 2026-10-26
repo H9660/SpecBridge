@@ -21,6 +21,7 @@ Questions asked during SpecBridge planning and what the user decided. Keep this 
 | 2026-10-26 | Which cloud provider and model? | OpenRouter, using Claude models for now; must be easy to switch to other models on OpenRouter. |
 | 2026-10-26 | Code search / embeddings: local or cloud? | Local for now. |
 | 2026-10-26 | Which small model (laptop: 15.4 GB RAM, no NVIDIA card)? | Not now - decide when the SLM course needs it. |
+| 2026-10-26 | Keep one document listing all build steps (done and planned)? | Yes - `docs/BUILD_STEPS.md`, kept updated after every step. |
 
 ## Still open
 
