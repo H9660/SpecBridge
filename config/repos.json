@@ -1,0 +1,14 @@
+{
+  "cutoff": "2026-04-01",
+  "jira": {
+    "base_url": "https://openmrs.atlassian.net",
+    "project": "O3"
+  },
+  "repos": [
+    {"name": "core", "url": "https://github.com/openmrs/openmrs-esm-core.git", "role": "Shared base: app shell, login, navigation, shared helpers used by every app"},
+    {"name": "patient-chart", "url": "https://github.com/openmrs/openmrs-esm-patient-chart.git", "role": "Patient page: allergies, medicines, vitals, notes, orders, visits"},
+    {"name": "patient-management", "url": "https://github.com/openmrs/openmrs-esm-patient-management.git", "role": "Registration, patient search, appointments, queues, wards"},
+    {"name": "billing-app", "url": "https://github.com/openmrs/openmrs-esm-billing-app.git", "role": "Bills, payments, billable services"},
+    {"name": "dispensing-app", "url": "https://github.com/openmrs/openmrs-esm-dispensing-app.git", "role": "Pharmacy: dispensing prescribed medicines"}
+  ]
+}

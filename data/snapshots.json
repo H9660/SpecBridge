@@ -1,0 +1,30 @@
+{
+  "cutoff": "2026-04-01",
+  "repos": {
+    "core": {
+      "url": "https://github.com/openmrs/openmrs-esm-core.git",
+      "commit": "cf088d5277b12b39022095ce4a9ec9e70e8373e3",
+      "date": "2026-03-31"
+    },
+    "patient-chart": {
+      "url": "https://github.com/openmrs/openmrs-esm-patient-chart.git",
+      "commit": "8ede2e3a641d470abcd31fe496f5714f2b4fc600",
+      "date": "2026-03-31"
+    },
+    "patient-management": {
+      "url": "https://github.com/openmrs/openmrs-esm-patient-management.git",
+      "commit": "37d3c1bce6ce05907625761c593077e4eae4613e",
+      "date": "2026-03-31"
+    },
+    "billing-app": {
+      "url": "https://github.com/openmrs/openmrs-esm-billing-app.git",
+      "commit": "6a0f80980e71807345ae412fb587bb9d57012bda",
+      "date": "2026-03-31"
+    },
+    "dispensing-app": {
+      "url": "https://github.com/openmrs/openmrs-esm-dispensing-app.git",
+      "commit": "7f604ab79d7c5120fde2ea1ebdb11241cbd0478c",
+      "date": "2026-03-31"
+    }
+  }
+}
