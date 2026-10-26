@@ -84,9 +84,9 @@ SpecBridge can run on a cloud LLM or, later, a small local model (SLM). Nothing 
 
 | Setting in `.env` | Effect |
 |---|---|
-| `BRAIN=llm` | Cloud model through OpenRouter (default: `anthropic/claude-sonnet-5.5`) |
+| `BRAIN=llm` | Cloud model through OpenRouter (default: `google/gemini-3.8-flash`) |
 | `BRAIN=slm` | Local model through Ollama (not set up yet) |
-| `BRAIN_MODEL=<model id>` | Use another model for a run, e.g. `anthropic/claude-haiku-5.5` or any OpenRouter model |
+| `BRAIN_MODEL=<model id>` | Use another model for a run, e.g. `google/gemini-4-argon`, `anthropic/claude-sonnet-5.5` or any OpenRouter model |
 
 ## Folder layout
 

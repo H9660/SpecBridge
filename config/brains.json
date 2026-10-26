@@ -5,10 +5,10 @@
       "api": "openai-chat",
       "provider": "openrouter",
       "base_url": "https://openrouter.ai/api/v1",
-      "model": "anthropic/claude-sonnet-5.5",
+      "model": "google/gemini-3.8-flash",
       "api_key_env": "OPENROUTER_API_KEY",
       "structured_outputs": true,
-      "context_window": 1000000,
+      "context_window": 1048576,
       "timeout_seconds": 180,
       "extra_body": {"usage": {"include": true}},
       "extra_headers": {"X-Title": "SpecBridge"}
