@@ -22,6 +22,12 @@ Questions asked during SpecBridge planning and what the user decided. Keep this 
 | 2026-10-26 | Code search / embeddings: local or cloud? | Local for now. |
 | 2026-10-26 | Which small model (laptop: 15.4 GB RAM, no NVIDIA card)? | Not now - decide when the SLM course needs it. |
 | 2026-10-26 | Keep one document listing all build steps (done and planned)? | Yes - `docs/BUILD_STEPS.md`, kept updated after every step. |
+| 2026-10-27 | Where to keep the repo copies on the Linux laptop? | "Clone here": `/home/qasim/Documents/sem3/AutoSE/Project/specbridge-work`, beside the SpecBridge folder, not inside it. Set `SPECBRIDGE_WORKDIR` in `.env` to this path. The user asked for "4 repos", but the README lists 5, so all 5 were cloned. |
+| 2026-10-27 | Which vector DB? | **SQLite + numpy** (user chose the first option). One SQLite file holds the code pieces, their labels and links, a full-text keyword index (FTS5) and the vectors; `numpy` compares a question with every vector (exact search, milliseconds at this size). No server. Reasons, measured on the 5 repos: about 5-10k pieces; many links that need joins (922 imports from `core`'s framework, 330 widgets/pages/forms in `routes.json`); 2,768 on-screen English strings that need real keyword search. The store sits behind one small interface so it can be swapped later. |
+| 2026-10-27 | Step 4: stay standard-library only, or allow extra packages? | `numpy` is allowed (part of the chosen SQLite + numpy store; first needed in Step 4c). Any other package (e.g. tree-sitter) only if the scores show a need, and asked first. |
+| 2026-10-27 | How far to go in one run? | "Complete all the steps": all of Step 4 (4b, 4c, 4d) done in one go, then stop before Step 5. |
+| 2026-10-27 | Which local embedding model? | `nomic-embed-text` through Ollama (the recommendation, taken as part of "complete all the steps"). It reads up to 2,048 tokens (not 8k as first said); pieces are capped at about 1,500 tokens. A code-specific model can still be compared in Step 10. |
+| 2026-10-27 | Ollama on the Linux laptop is broken (no model engine in `/usr/local/lib/ollama`). Reinstall, use a Python embedding library, or skip meaning search? | Reinstall Ollama (`curl -fsSL https://ollama.com/install.sh | sh`, needs sudo; the user runs it). Also fixes the SLM brain for later. |
 
 ## Still open
 
@@ -33,3 +39,5 @@ Questions asked during SpecBridge planning and what the user decided. Keep this 
 | 2026-10-26 | Mixed mode later (small model first, hand hard parts to the big one)? | Optional, only if a course asks |
 | 2026-10-26 | Trigger: automatic when a ticket is created, or a simple page/button for the prototype? | Simple page/button for the prototype |
 | 2026-10-26 | Build both code-reading approaches (code library and live GitHub) and compare them? | Yes, as the proposal promises |
+| 2026-10-27 | Have the LLM write a one-line "what the user sees" summary for each piece of code before indexing? (one-time cost; the SLM course would need to reuse the same summaries) | Not at first. Add it only if search scores are too low without it |
+| 2026-10-27 | Pass bar for Step 4 search, measured on the golden tickets' really-changed files? | At least one changed file in the top 10 results for 80% of tickets, and per-file recall@20 reported for each group (cross-repo, vague, `mentions-files` scored separately) |

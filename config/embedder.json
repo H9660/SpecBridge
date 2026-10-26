@@ -1,0 +1,11 @@
+{
+  "provider": "ollama",
+  "base_url": "http://127.0.0.1:11434",
+  "model": "nomic-embed-text",
+  "document_prefix": "search_document: ",
+  "query_prefix": "search_query: ",
+  "max_chars": 6000,
+  "batch_size": 16,
+  "timeout_seconds": 300,
+  "note": "Local embeddings for the code library (Step 4c). Override the model with EMBED_MODEL. nomic-embed-text reads up to 2,048 tokens; pieces are at most 6,000 characters (about 1,500 tokens)."
+}

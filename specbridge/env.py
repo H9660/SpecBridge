@@ -15,5 +15,5 @@ def load_env(path=PROJECT / ".env", use_os=True):
                 key, value = line.split("=", 1)
                 env[key.strip()] = value.strip().strip('"').strip("'")
     if use_os:
-        env.update({k: v for k, v in os.environ.items() if k in env or k.startswith(("BRAIN", "OPENROUTER_"))})
+        env.update({k: v for k, v in os.environ.items() if k in env or k.startswith(("BRAIN", "OPENROUTER_", "EMBED_"))})
     return env
