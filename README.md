@@ -7,7 +7,7 @@ A PM writes a Jira ticket; SpecBridge reads the real code and writes UAT test ca
 
 ## What you need
 
-- **Python 3.12.** No extra packages - only the standard library is used.
+- **Python 3.12.** Only the standard library, except `numpy` for search by meaning (Step 4c).
 - **Git 2.30 or newer.**
 - **About 100 MB of disk** for the code repos, in a folder that is **not** synced by OneDrive, Dropbox or iCloud.
 - **Access to the team's Atlassian site** (`rooks101.atlassian.net`): ask the team to invite you, then create your own API token.
@@ -74,7 +74,10 @@ SPECBRIDGE_WORKDIR=C:/specbridge-work
 py -3.12 scripts/smoke_test_step1.py --workdir C:/specbridge-work
 py -3.12 scripts/smoke_test_step2.py
 py -3.12 scripts/smoke_test_step3.py
+py -3.12 scripts/smoke_test_step4.py
 ```
+
+Step 4 builds the code library (`specbridge_index.sqlite`, next to the repos) on first run, in a few seconds. Search by meaning needs `numpy` and a local Ollama with the embedding model: `python3.12 -m venv .venv && .venv/bin/pip install numpy`, install Ollama from https://ollama.com, then `ollama pull nomic-embed-text`; run the Step 4 smoke test and scoring with `.venv/bin/python` (Windows: `.venv\Scripts\python`). To score code search on the golden tickets: `py -3.12 scripts/eval_retrieval.py --method combined` (or `--method hybrid` with embeddings; reports in `data/retrieval/`).
 
 Each writes a report (see [docs/BUILD_STEPS.md](docs/BUILD_STEPS.md) for where) and ends with no `FAIL`. `WARN` lines are known and explained in the report; `PENDING` means a setting in `.env` is still missing.
 
@@ -92,7 +95,7 @@ SpecBridge can run on a cloud LLM or, later, a small local model (SLM). Nothing 
 
 | Folder | What is in it |
 |---|---|
-| `specbridge/` | The product code (the brain adapter so far) |
+| `specbridge/` | The product code (brain adapter, code library and its agent tools, embedder, search scoring) |
 | `scripts/` | Setup, data-building and smoke-test scripts |
 | `config/` | Repo list and brain settings |
 | `data/` | Frozen versions, golden tickets, smoke-test reports |
