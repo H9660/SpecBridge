@@ -1,0 +1,6 @@
+# Product term -> code names, hand-maintained by the team (handoff §2.1). Filled in Phase 1+.
+# Example entry:
+# - term: "patient chart"
+#   code: [PatientChart, patient-chart-dashboard]
+#   notes: "Main patient page in the patient-chart repo"
+terms: []

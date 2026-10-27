@@ -1,0 +1,13 @@
+# Thresholds are set by the team BEFORE the first full eval run. Do not edit after seeing results
+# without logging the change and reason in docs/iteration_log.md.
+golden_version: v1
+set_on: null              # date set
+thresholds:
+  grounding_pass_rate: null
+  adversarial_invented_screens_max: 0
+  coverage_pass_rate: null
+  correctness_pass_rate: null
+  ambiguity_pass_rate: null
+  judge_human_agreement_min: null
+  cost_per_ticket_usd_max: null
+  latency_p95_s_max: null
