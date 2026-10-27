@@ -81,6 +81,16 @@ Step 4 builds the code library (`specbridge_index.sqlite`, next to the repos) on
 
 Each writes a report (see [docs/BUILD_STEPS.md](docs/BUILD_STEPS.md) for where) and ends with no `FAIL`. `WARN` lines are known and explained in the report; `PENDING` means a setting in `.env` is still missing.
 
+### 4. The `specbridge` command (handoff build)
+
+The build now follows [SPECBRIDGE_HANDOFF.md](SPECBRIDGE_HANDOFF.md) (differences: [docs/HANDOFF_DEVIATIONS.md](docs/HANDOFF_DEVIATIONS.md)). It uses [uv](https://docs.astral.sh/uv/):
+
+```
+uv sync                     # installs Python 3.12 and the packages from uv.lock
+uv run specbridge --help    # all commands; the ones not built yet say which phase builds them
+uv run pytest               # unit tests (model calls are mocked; no key needed)
+```
+
 ## Choosing the AI brain
 
 SpecBridge can run on a cloud LLM or, later, a small local model (SLM). Nothing else changes. Settings are in [config/brains.json](config/brains.json).

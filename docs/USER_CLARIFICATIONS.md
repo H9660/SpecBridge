@@ -28,6 +28,10 @@ Questions asked during SpecBridge planning and what the user decided. Keep this 
 | 2026-10-27 | How far to go in one run? | "Complete all the steps": all of Step 4 (4b, 4c, 4d) done in one go, then stop before Step 5. |
 | 2026-10-27 | Which local embedding model? | `nomic-embed-text` through Ollama (the recommendation, taken as part of "complete all the steps"). It reads up to 2,048 tokens (not 8k as first said); pieces are capped at about 1,500 tokens. A code-specific model can still be compared in Step 10. |
 | 2026-10-27 | Ollama on the Linux laptop is broken (no model engine in `/usr/local/lib/ollama`). Reinstall, use a Python embedding library, or skip meaning search? | Reinstall Ollama (`curl -fsSL https://ollama.com/install.sh | sh`, needs sudo; the user runs it). Also fixes the SLM brain for later. |
+| 2026-10-27 | `SPECBRIDGE_HANDOFF.md` (new build spec) conflicts with Steps 1-4 already built. Which wins? | **Merge into existing.** Keep the OpenMRS repos, code library and golden candidates; add the handoff's scaffold (uv, `models.py`, `llm.py`, Typer CLI, eval layout) around them. Deviations are listed in [HANDOFF_DEVIATIONS.md](HANDOFF_DEVIATIONS.md). |
+| 2026-10-27 | Target repo and pinned commit (handoff §3)? | **OpenMRS, all 5 repos** at the existing pinned commits (`data/snapshots.json`). This goes against the handoff's "one repo, no multi-repo" rule on purpose. Phase 1 waits for the user's go-ahead. |
+| 2026-10-27 | Agent and judge models (handoff §3)? | Agent: `openrouter/google/gemini-3.8-flash`. Judge: `openrouter/anthropic/claude-sonnet-5.5` (a different model family). Both through OpenRouter, set in `config/config.yaml`. |
+| 2026-10-27 | Embedding model (handoff §3)? | `nomic-embed-text` through local Ollama (unchanged from Step 4c). |
 
 ## Still open
 

@@ -27,6 +27,8 @@ Plan section = section of [autonomous_software_engineering_plan.md](../autonomou
 
 Steps 4-11 are the current proposal and may change; each is agreed with the user before it starts.
 
+**2026-10-27: build spec merged.** [SPECBRIDGE_HANDOFF.md](../SPECBRIDGE_HANDOFF.md) is now the source of truth for scope, schemas, the eval harness and build phases. It is merged with Steps 1-4, not a restart; the differences are in [HANDOFF_DEVIATIONS.md](HANDOFF_DEVIATIONS.md). **Handoff Phase 0 (scaffold) is done:** `uv` project (`pyproject.toml`, `uv.lock`, Python 3.12), `config/config.yaml`, `CLAUDE.md`, all §6 schemas in `specbridge/models.py`, a LiteLLM wrapper in `specbridge/llm.py`, a Typer CLI with every command stubbed (`uv run specbridge --help`), `scripts/repo_stats.py` (report: [repo_stats_openmrs.md](repo_stats_openmrs.md)) and tests (`uv run pytest`). Next is handoff Phase 1 (indexer), which waits for the user's go-ahead.
+
 ## Done
 
 ### Step 1 - Test repos and golden ticket candidates
