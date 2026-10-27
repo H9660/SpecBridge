@@ -11,3 +11,10 @@ __pycache__/
 .idea/
 Thumbs.db
 desktop.ini
+
+# SpecBridge build outputs (handoff §5)
+data/repo/
+data/index/
+*.sqlite
+.pytest_cache/
+.ruff_cache/
