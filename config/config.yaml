@@ -1,0 +1,46 @@
+# SpecBridge settings. Secrets go in .env, never here.
+# One-off experiments: add a CLI flag rather than editing this file (the flags are recorded in each run's config).
+
+target:
+  # Five OpenMRS 3 frontend repos, each frozen at its 31 March 2026 commit (decided 2026-10-26).
+  # The repo list and pinned commits live in ONE place only, so they cannot drift:
+  repos_file: config/repos.json        # names + clone URLs
+  snapshots_file: data/snapshots.json  # pinned commit per repo
+  workdir_env: SPECBRIDGE_WORKDIR      # where the clones live (outside any synced folder)
+  include_ext: [".ts", ".tsx", ".js", ".jsx"]
+  exclude_dirs: [node_modules, dist, build, .next, coverage]
+  exclude_globs: ["*.test.*", "*.spec.*", "*.stories.*", "*.d.ts"]
+
+models:
+  # LiteLLM model IDs. BRAIN=llm|slm and BRAIN_MODEL in .env still pick/override the agent (config/brains.json).
+  agent: openrouter/google/gemini-3.8-flash
+  judge: openrouter/anthropic/claude-sonnet-5.5   # deliberately a different model family from the agent
+  temperature: 0.0
+  max_tokens: 4000
+  request_timeout_s: 180
+  retries: 2
+
+embeddings:
+  # Local, via Ollama. Full settings in config/embedder.json (override the model with EMBED_MODEL).
+  settings_file: config/embedder.json
+  model: nomic-embed-text
+
+store:
+  # SQLite + FTS5 + numpy (decided 2026-10-27), file kept next to the repos.
+  kind: sqlite-numpy
+  db_file: specbridge_index.sqlite
+
+agent:
+  max_tool_calls: 12
+  max_selfcheck_loops: 2
+  read_file_max_lines: 200
+  search_k: 8
+
+paths:
+  prompts: prompts
+  glossary: data/glossary.yaml
+  golden: golden
+  runs: runs
+  human_ratings: human_ratings
+  customer_sessions: customer/sessions
+  ship_gate: docs/ship_gate.yaml
