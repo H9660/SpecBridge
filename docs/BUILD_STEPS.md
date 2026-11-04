@@ -1,6 +1,6 @@
 # SpecBridge build steps
 
-What we are building, one step at a time. After each step: report blockers, run its smoke test, and wait for "proceed" before starting the next. Keep this file updated as steps finish or the plan changes. Decisions behind the steps are in [USER_CLARIFICATIONS.md](USER_CLARIFICATIONS.md).
+What we are building, one step at a time. After each step: report blockers, run its smoke test, and wait for "proceed" before starting the next. Keep this file updated as steps finish or the plan changes. Decisions behind the steps are in [USER_CLARIFICATIONS.md](USER_CLARIFICATIONS.md). The agent's design (Steps 6-9) is in [ARCHITECTURE.md](ARCHITECTURE.md), drawn in [architecture.drawio](architecture.drawio); the map below ties every box in the drawing to a step. What each file does is in [repo_map.md](repo_map.md): update it whenever a file is added or gains new functionality (`py -3.12 scripts/check_repo_map.py` lists files missing from it).
 
 **Product:** a Jira ticket goes in; SpecBridge reads the real code and writes UAT test cases to Confluence. Writing code (plan sections E5 and E7) is out of scope for now.
 **Brain:** cloud LLM through OpenRouter (default); local SLM can be switched in later.
@@ -15,17 +15,43 @@ Plan section = section of [autonomous_software_engineering_plan.md](../autonomou
 |---|---|---|---|
 | 1 | Pick test repos and real tickets; shortlist golden candidates | E10 (evaluation data) | Done |
 | 2 | Download frozen repos; copy 63 tickets into team Jira | E1, E11 (secrets) | Done |
-| 3 | Swappable brain: one interface for LLM and SLM | E2 | Built - waiting for OpenRouter key |
-| 4 | Code library: index the repos and search them locally (SQLite + numpy) | E4 | 4a, 4b, 4d done; 4c built - waiting for Ollama reinstall |
-| 5 | Live GitHub code reading (second approach, to compare) | E4 / E5 | Planned |
-| 6 | Ticket reader: pull out requirements; flag vague or unsafe tickets | E8-S1 | Planned |
-| 7 | Test-case writer: UAT test cases grounded in the code | E6, E8 | Planned |
-| 8 | Publish to Confluence and comment on the Jira ticket; simple trigger page | E9, E11, E12 | Planned |
+| 3 | Swappable brain: one interface for LLM and SLM | E2 | Done (SLM part waits until the SLM course needs it) |
+| 4 | Code library: index the repos and search them locally (SQLite + numpy) | E4 | Done (search 0.79 vs provisional 0.80 bar on tickets without file names - see 4c) |
+| 5 | Live GitHub code reading (second approach, to compare) | E4 / E5 | Moved into Step 10 (2026-10-28) |
+| 6 | Ticket reader: 6a intake, 6b understand, 6c clarify (pull out requirements; flag vague or unsafe tickets) | E8-S1 | Next |
+| 7 | Agent (LangGraph): 7a skeleton + state + checkpointer, 7b code source, 7c orchestrator, 7d criterion worker, 7e e2e worker, 7f merge, 7g reviewer, 7h wire up and limits | E6, E8 | Planned |
+| 8 | Output: 8a render + save_local, 8b publish to Confluence and comment on Jira, 8c command line + simple local page, 8d bot account | E9, E11, E12 | Planned |
 | 9 | Golden answers and scoring: rubric, LLM judge, ship gate | E10 | Planned |
-| 10 | Improve over 3+ rounds; compare LLM against SLM | E3, E10 | Planned |
+| 10 | Improve over 3+ rounds; compare LLM against SLM, several workers against one, and code library against live GitHub (former Step 5) | E3, E4, E5, E10 | Planned |
 | 11 | Real users (5+, not classmates), one-page PRD, demo, presentation | - | Planned |
 
 Steps 4-11 are the current proposal and may change; each is agreed with the user before it starts.
+
+## Architecture diagram to steps
+
+Every box in [architecture.drawio](architecture.drawio) and the step that builds it. Build order inside Steps 6-8 follows the run order, except that Step 7a first builds the whole graph with stub nodes so every later node is added to something that already runs from START to END.
+
+| Box in the drawing | Kind | Built in | Notes |
+|---|---|---|---|
+| Ticket URL (CLI or local Run page) | input | 8c | `scripts/run_ticket.py` first (7h), then the simple page |
+| START, END, main graph, `SpecBridgeState` | graph | 7a | stub nodes, routers, limits as settings |
+| `intake` | code | 6a | team Jira only, fetch, clean, injection flags |
+| `understand` | AI | 6b | intent, criteria, screens, questions, risks, testable |
+| `clarify` | code | 6c | needs-clarification result, no test cases |
+| `orchestrator` | code | 7c | group (max 5), search, hand out, brief, budget split, `Send` |
+| `criterion_worker` x N (subgraph) | AI agent | 7d | `receive_slice`, `agent` <-> `tools`, `write_cases`, `WorkerResult` |
+| `e2e_worker` (subgraph) | AI | 7e | only when 2+ workers |
+| `merge` | code + AI | 7f | combine, IDs, dedupe; AI editor |
+| `reviewer` | code + AI | 7g | code checks, independent AI review, retry routing |
+| `render` | code | 8a | page grouped by criterion + comment text |
+| `save_local` | code | 8a | dry-run and eval mode |
+| `publish` (the only writer) | code | 8b | page in `UAT`, ticket comment, never overwrite PM edits |
+| Brain adapter | service | 3 (done), `chat()` added in 7d | multi-turn call for the worker's tool loop |
+| Knowledge base / code source | service | 4 (done), 7b, 10 | `LibrarySource` in 7b; `GitHubSource` in Step 10 |
+| Jira | service | 2 (done), 6a (read), 8b (write) | `get_issue` in 6a; comment create/update in 8b |
+| Confluence | service | 8b | page find/create/update, label `awaiting-pm-review` |
+| Checkpointer + run records | service | 7a | `SqliteSaver` + `data/runs/`; feeds Step 9 |
+| Limits ($0.25, 2 rounds, ~12 tool calls, 20% reserve) | settings | 7a (defined), 7h (enforced) | hitting one gives status `incomplete` |
 
 ## Done
 
@@ -43,7 +69,9 @@ Steps 4-11 are the current proposal and may change; each is agreed with the user
 ### Step 3 - Swappable brain (LLM / SLM)
 - **Did:** one interface (`ask`, `ask_json`) used by everything else; brain chosen in `config/brains.json` with `BRAIN=llm|slm`; any OpenRouter model via `BRAIN_MODEL`; JSON answers checked and retried once; every answer records brain, model, tokens, cost and time.
 - **Files:** `specbridge/brain.py`, `specbridge/env.py`, `config/brains.json`
-- **Smoke test:** `scripts/smoke_test_step3.py` -> `data/smoke_test_step3.md` - 12 pass, 2 pending (live OpenRouter calls need `OPENROUTER_API_KEY`), 1 skipped (SLM not chosen yet).
+- **Default model:** `google/gemini-3.8-flash` through OpenRouter (switched from Claude Sonnet 5.5 on 2026-10-27).
+- **Found with the live key:** Gemini 3.8 Flash "thinks" before answering, and the thinking counts against `max_tokens`. With a limit of 20 it returned an empty answer. The brain now raises a clear error in that case instead of returning empty text. Later steps must give it room (hundreds of tokens even for short answers).
+- **Smoke test:** `scripts/smoke_test_step3.py` -> `data/smoke_test_step3.md` - 15 pass, 1 skipped (SLM not chosen yet). Live calls cost $0.0003 (plain) and $0.0027 (JSON; Gemini's first JSON answer was rejected and the automatic retry fixed it).
 
 ### Step 4a - Scoring and keyword baseline
 - **Did:** chose the store: one SQLite file plus `numpy` (see USER_CLARIFICATIONS.md, 2026-10-27). Built the code library (`CodeIndex`): every code file of the 5 frozen repos (2,322 files, 1,755 non-test) in `specbridge_index.sqlite` next to the repos, with a keyword index (FTS5, BM25; code names split into words, words stemmed). Rebuilds only when a repo's commit changes (under 1 s). Built the scoring: each golden ticket's cleaned Jira text is the query; the target is the files the real fix changed that already existed at the frozen version (61 of 63 tickets scorable).
@@ -61,31 +89,105 @@ Steps 4-11 are the current proposal and may change; each is agreed with the user
 - **Scores (combined, no embeddings):** hit@10 0.80 (0.74 without file names in the ticket), recall@10 0.58, recall@20 0.66, mrr 0.53; cross-repo recall@20 0.32 -> 0.52. Settings picked from a small grid; differences under about 0.03 are noise.
 - **Files:** `specbridge/code_index.py`, `specbridge/code_tools.py`, `data/retrieval/combined.md|json`
 
-### Step 4c - Search by meaning (built; waiting for Ollama)
+### Step 4c - Search by meaning (done 2026-10-27, on the Windows laptop)
 - **Did:** embedder for local Ollama (`config/embedder.json`, `nomic-embed-text`, override with `EMBED_MODEL`); each piece is embedded as "repo + path, name + kind, where it appears, on-screen text, code"; vectors stored in the same SQLite file and searched exactly with `numpy` (installed in the project `.venv`). Embedding is resumable and skips pieces already done.
-- **Blocked:** the Ollama install on the Linux laptop is incomplete (no `llama-server` in `/usr/local/lib/ollama`), so it cannot run any model. The user chose to reinstall it (`curl -fsSL https://ollama.com/install.sh | sh`). Then: `.venv/bin/python scripts/eval_retrieval.py --method hybrid` (embeds all pieces once, then scores) and re-run the smoke test.
+- **Ran on the Windows laptop** (Ollama 0.40.11 with `nomic-embed-text`; the Linux laptop's Ollama is still broken). Embedding all 3,827 pieces took 47 minutes on the processor (one time; re-runs skip done pieces). Run with `py -3.12 scripts/eval_retrieval.py --method hybrid`.
+- **Scores, hybrid (keywords + meaning + links) vs combined (no meaning):**
+
+  | Tickets | hit@10 | recall@20 | mrr |
+  |---|---|---|---|
+  | all (61) | 0.80 -> **0.84** | 0.66 -> **0.73** | 0.53 -> 0.54 |
+  | no file names in ticket (43) | 0.74 -> **0.79** | 0.60 -> **0.70** | 0.48 -> 0.52 |
+  | vague (17) | 0.59 -> **0.71** | 0.59 -> **0.73** | 0.40 -> 0.45 |
+  | cross-repo (6) | 1.00 -> 1.00 | 0.52 -> 0.50 | 0.64 -> 0.81 |
+
+  Meaning search helps most where expected: vague tickets. Tickets without file names reach 0.79, one ticket short of the provisional 0.80 bar (34 of 43; 35 needed). Search now takes about 0.5 s per ticket (was 0.03 s), still fast.
+- **Fixed:** the Step 4 smoke test crashed once all pieces were embedded (it read from the database after closing it); this path had never run before.
 - **Files:** `specbridge/embedder.py`, `config/embedder.json`, `specbridge/code_index.py`
-- **Smoke test (all of Step 4):** `.venv/bin/python scripts/smoke_test_step4.py` -> 21 pass, 1 warn (combined search at 0.74 without file names, below the provisional 0.80 bar), 2 pending (live Ollama embedder; hybrid score). The 4c plumbing passes against a fake embedding server.
+- **Smoke test (all of Step 4):** `py -3.12 scripts/smoke_test_step4.py` -> `data/smoke_test_step4.md` - 23 pass, 1 warn (hybrid at 0.79 without file names, just below the provisional 0.80 bar), 0 pending.
 
 ## Planned
 
-### Step 5 - Live GitHub reading
-Read files from GitHub at the frozen version when needed, instead of from the library. Needs a GitHub token. Compared with Step 4 in Step 10.
+### Step 5 - Live GitHub reading (moved into Step 10)
+Moved on 2026-10-28: the agent works on the code library alone, and the comparison is only meaningful once the agent exists. Findings so far, for when it is built: GitHub's code search covers only the latest code (which already contains the fixes), so at the frozen version the live approach can only list folders, read files and search inside files already read; it needs a GitHub token (60 calls/hour without one); and on this Windows laptop one of GitHub's four addresses (185.199.109.133) does not answer, so Python waits 21 s per connection unless the client skips it.
 
-### Step 6 - Ticket reader
-Pull requirements and acceptance criteria out of a ticket; flag vague, contradictory or unsafe tickets (hidden instructions, fake screens, secret requests). Includes the 6 adversarial tickets.
+### Step 6 - Ticket reader (`intake`, `understand`, `clarify`)
+Pull requirements and acceptance criteria out of a ticket; flag vague, contradictory or unsafe tickets (hidden instructions, fake screens, secret requests). Includes the 6 adversarial tickets (hand-written, in Jira as SPEC-64 to SPEC-69, see [repo_map.md](repo_map.md)). Gemini 3.8 Flash thinks before answering and the thinking counts against `max_tokens` (Step 3), so every AI call here needs room: hundreds of tokens even for short answers. Smoke test for the whole step: `scripts/smoke_test_step6.py` -> `data/smoke_test_step6.md`.
 
-### Step 7 - Test-case writer
-Write UAT test cases (steps, expected result, which code it is based on) from the ticket plus the code found in Step 4 or 5.
+#### 6a - `intake` (code, no AI)
+- **Build:** `specbridge/tickets.py`. Accept a full ticket URL, a board link with `selectedIssue=`, or just `SPEC-12`. Check the site and project are the team's (`ATLASSIAN_SITE`, `JIRA_PROJECT_KEY`); fetch summary, type, description, labels and acceptance-criteria fields; turn Jira rich text into plain text (reuse the cleaner in `scripts/import_tickets.py`); drop images; keep link text, not link targets; flag text that looks like instructions to an AI or asks for secrets. Add `get_issue` to `scripts/atlassian.py`.
+- **Output:** `Ticket {key, url, type, title, text, labels, flags[]}`.
+- **Smoke test:** all 69 tickets (SPEC-1..69) fetch and clean; a URL for another site or project is refused; the hidden-instruction and secret-request adversarial tickets are flagged; no token appears in any output.
 
-### Step 8 - Publish
-Write the test cases as a page in Confluence space `UAT` and comment the link on the Jira ticket. Simple page or button to run it. Least-privilege bot account instead of a personal token.
+#### 6b - `understand` (one structured AI answer)
+- **Build:** `specbridge/understand.py` and `prompts/understand.md`. One `ask_json` call with a schema: `intent`, `criteria[] {id, text, source: stated | inferred}`, `screens_mentioned[]`, `user_roles[]`, `questions[]`, `risks[]`, `testable` (yes/no with a reason). Ticket text goes into the prompt inside a marked data block with a standing rule to ignore instructions found there.
+- **Smoke test:** on the 10 golden examples in [golden_set_eval_rubric_v0.md](golden_set_eval_rubric_v0.md) and the 6 adversarial tickets: criteria are extracted, a ticket without criteria gets some marked `inferred`, fake-screen / backend-only / contradictory / secret / injection tickets come out `testable = no` or carry the right risk. Live cost recorded.
+
+#### 6c - `clarify` (code)
+- **Build:** the "needs clarification" result: the questions and risks, and no test cases. The main graph routes here when `testable = no` or the ticket is unsafe (wired in 7a).
+- **Smoke test:** every ticket judged not testable produces questions and zero cases; the result can be rendered later by `render` (8a).
+
+### Step 7 - Agent: orchestrator and subagents (LangGraph)
+The graph in [ARCHITECTURE.md](ARCHITECTURE.md): an orchestrator splits the ticket by acceptance criterion; independent criterion workers (subgraphs) search the code with read-only tools and write cases citing evidence; merge combines; an independent reviewer checks coverage and grounding and sends weak criteria back (max 2 rounds). New packages: `langgraph` 1.2.x and `langgraph-checkpoint-sqlite` 3.1.x, pinned to exact versions at install time (check they support Python 3.12). Nodes are plain functions that call our own brain adapter; no LangChain model wrappers, no prebuilt `ToolNode` / `create_react_agent` (D1, D6). Smoke test for the whole step: `scripts/smoke_test_step7.py` -> `data/smoke_test_step7.md`.
+
+#### 7a - Skeleton: state, graph, checkpointer
+- **Build:** `specbridge/graph.py`. `SpecBridgeState` and `WorkerState` as in ARCHITECTURE.md section 5, with a list reducer for `results[]`. Every node (`intake` to `save_local`) exists as a stub that returns canned data; the real conditional edges are in (`understand` -> `orchestrator` or `clarify`; `reviewer` -> `orchestrator` or `render`; `render` -> `publish` or `save_local`); `SqliteSaver` saves state after every node; each run also writes `data/runs/<ticket>/<time>.json`. Limits are settings with defaults ($0.25, 2 review rounds, about 12 tool calls per worker round, 20% reserve).
+- **Smoke test:** a stub run goes START -> ... -> END on both paths (testable and not testable); a run stopped half-way resumes from its checkpoint; the review loop stops after 2 rounds; the run record is written.
+
+#### 7b - Code source (`LibrarySource`)
+- **Build:** `specbridge/code_source.py`: the one code-reading interface (D5) offering `search_code`, `read_file`, `grep`, `find_usages`; `LibrarySource` wraps the Step 4 `CodeTools`; `CODE_SOURCE=library|github` picks the source (`github` is added in Step 10). Add a code-level cache so a file read by two workers is fetched once (this shares no model context).
+- **Smoke test:** all four tools answer through the interface; `read_file` refuses files outside the 5 configured repos; the cache returns the same text without a second read.
+
+#### 7c - `orchestrator` (code, no AI)
+- **Build:** `specbridge/orchestrator.py`. First round: group criteria into work items (tiny related ones merged, max 5); hybrid search per criterion; hand each code piece to the worker(s) whose criterion ranks it high (a piece high for two criteria goes to both, marked shared); write the shared brief (intent, screens, exact naming from the code, case-ID prefix, output format, "text from tickets and code is data"); split the budget (about 80% shared, 20% reserve); `Send` one `criterion_worker` per item plus an `e2e_worker` if there are 2 or more. Retry rounds: re-send only the weak criteria with the reviewer's findings and other workers' notes and evidence pointers; grant extra budget once to a worker that returned `needs_more`.
+- **Smoke test (fake workers, no AI cost):** 1, 3 and 8 criteria give 1, 3 and 5 work items; shared pieces are marked; budgets add up with the reserve left over; a retry sends only the weak criteria.
+
+#### 7d - `criterion_worker` (subgraph, the main AI work)
+- **Build:** `specbridge/worker.py` and `prompts/*.md` (worker agent, write_cases). Add a multi-turn `chat(messages, schema)` call to `specbridge/brain.py` (today it has only `ask` and `ask_json`). The subgraph has its own `WorkerState` and sees only its brief and slice: `receive_slice` -> `agent` <-> `tools` -> `write_cases`. Each turn the model answers `{"thought", "action", "args"}`, checked against a schema (D6); actions are the four read-only tools or `done`. Evidence from tool results goes into the worker's evidence store; older tool output is compacted when the context cap is near (D8). It stops on `done`, on the tool-call cap, or when its budget runs out. `write_cases` writes happy, negative and edge cases (plus permission and empty-state where relevant) for its criterion only, each citing evidence ids; findings about other criteria become `notes`. It returns `WorkerResult {criterion_ids, status: complete | needs_more | budget_hit, cases[], evidence[], questions[], notes[]}` and nothing else.
+- **Smoke test:** one golden ticket, one worker, live: every case cites an evidence id for a file and lines the worker actually read; a tiny budget gives `needs_more` or `budget_hit`, never a crash; a malformed action is retried once; the worker's messages stay out of the main state.
+
+#### 7e - `e2e_worker` (subgraph)
+- **Build:** same file as 7d. Gets the shared brief, the screen list and a one-line summary per criterion (no raw code); writes flows that cross criteria (for example create bill -> finalize -> pay); may use the same read-only tools to confirm screens exist.
+- **Smoke test:** runs only when there are 2 or more workers; its cases cite evidence or are marked unverified; a one-criterion ticket never starts it.
+
+#### 7f - `merge` (code, then one AI pass)
+- **Build:** `specbridge/merge.py`. Code: combine all `WorkerResult`s, dedupe evidence by file and lines, assign final IDs (TC-01, TC-02, ...), group by criterion. AI editor: remove duplicate cases, make screen and button names consistent, move shared setup into common preconditions, turn notes into preconditions or end-to-end cases. It may not add claims or evidence; code re-checks that every evidence id still exists afterwards.
+- **Smoke test:** two workers that cite the same file give one evidence entry; a planted duplicate case is removed; an editor answer that invents an evidence id is rejected.
+
+#### 7g - `reviewer` (code checks, then independent AI review)
+- **Build:** `specbridge/review.py` and `prompts/reviewer.md`. Code checks: every criterion has a case; every case cites an existing evidence id; cited files and lines exist at the frozen version; named screens and labels appear in the code's on-screen text or `routes.json`; each criterion has a negative or edge case where it makes sense; no secrets or injected instructions in the output. AI review in a fresh context (ticket, merged cases and cited code only; ideally a different model family from the writers) gives `ok` or gaps per criterion. Route: gaps and fewer than 2 rounds -> `orchestrator` (weak criteria only); otherwise -> `render`.
+- **Smoke test:** planted bad cases (a screen that does not exist, a case with no citation, a secret-like string) are each caught by the code checks; a retry re-runs only the weak criterion; the second round ends the loop.
+
+#### 7h - Wire up, limits and a first dry run
+- **Build:** replace the stubs in `graph.py` with the real nodes; enforce the limits (cost cap, 2 rounds, tool-call cap), with a hit giving status `incomplete` and never a silent failure; `max_concurrency` setting (parallel on the cloud LLM, 1 at a time on a local SLM); `scripts/run_ticket.py <ticket URL> --dry-run [--brain llm|slm] [--source library] [--max-workers 5]`; prompt versions saved in the run record (D12). `render` and `save_local` are still stubs that write the merged plan to the run record.
+- **Smoke test:** the first 10 golden tickets run end to end in dry-run; one `understand`-unsafe ticket ends at `clarify` with no cases; cost, time, tokens, workers and rounds are in each run record; a run forced over the cost cap ends `incomplete`.
+
+### Step 8 - Output: page, publish, trigger
+The last part of the graph: turn the plan into a Confluence page, publish it, and give people a way to start a run. Smoke test for the whole step: `scripts/smoke_test_step8.py` -> `data/smoke_test_step8.md`.
+
+#### 8a - `render` and `save_local` (code, no AI)
+- **Build:** `specbridge/render.py`. Page: summary and intent; affected screens; test cases grouped by criterion (ID, Preconditions, Action, Expected result, Actual result left blank, Pass/Fail left blank); open questions; the review report, with any incomplete criterion marked; evidence list (file and lines); run details (model, workers, cost, time, version). Output in Confluence format and as local HTML, plus the Jira comment text. `save_local` writes the page and run record to files (dry-run and eval mode). A `clarify` result renders as a questions-only page.
+- **Smoke test:** a saved run record renders with no network; the blank columns are blank; a needs-clarification record renders without cases; every evidence entry shows file and lines.
+
+#### 8b - `publish` (the only node that writes)
+- **Build:** `specbridge/publish.py`; extend `scripts/atlassian.py` with page find/create/update and comment create/update. Create or update the page in space `UAT`, found by ticket key, labelled with the key and `awaiting-pm-review`; add or update one comment on the ticket linking to it. If someone other than SpecBridge edited the page since the last run, the new draft goes in as a comment on the page instead (D10). Scan the output for secret-like text before publishing.
+- **Smoke test:** run the same ticket twice -> one page, one comment; edit the page by hand, run again -> the edit survives and the new draft appears as a comment; a write outside `UAT` or to another ticket is refused; a planted secret blocks publishing.
+
+#### 8c - Command line and simple local page
+- **Build:** finish `scripts/run_ticket.py` (live mode; `--dry-run` already exists from 7h) and `app/`: a local page where you paste a ticket URL, press Run, see progress per node and worker, and see the result (D14). A Jira webhook comes later and is not part of this step.
+- **Smoke test:** a URL pasted in the page runs the graph and shows the same output as the command line; the page refuses a URL from another site.
+
+#### 8d - Least-privilege bot account
+- **Build:** replace the personal Atlassian token with a bot account that can read the `SPEC` project and write only to space `UAT` and ticket comments (open since Step 2). Update `.env.example` and README.
+- **Smoke test:** the bot can publish a page and a comment; the same token cannot edit a ticket or write to another space.
 
 ### Step 9 - Golden answers and scoring
-Team writes correct answers for 30-50 tickets; human rubric plus an LLM judge; set the ship gate (minimum scores to call it ready).
+Started early as course activity 3: [golden_set_eval_rubric_v0.md](golden_set_eval_rubric_v0.md) has the first 10 labelled examples, rubric v0 and the scoring split. Step 9 extends it to the full 30-50 and automates the scoring.
+
+Team writes correct answers for 30-50 tickets; human rubric plus an LLM judge; set the ship gate (minimum scores to call it ready). `scripts/eval_agent.py` runs the exact same graph in eval mode (no publishing, output kept by `save_local`) and scores each run record: retrieval, coverage, grounding (from the reviewer's code checks), rubric and judge quality, safety on the adversarial tickets, and tokens, cost and time per node and per worker (ARCHITECTURE.md section 7). The judge should be a different model family from the writers.
 
 ### Step 10 - Improve and compare
-At least 3 improvement rounds, each scored on the golden set; code library against live GitHub; LLM against SLM when the SLM course needs it.
+At least 3 improvement rounds, each scored on the golden set. Comparisons on the same golden tickets: several workers against one; LLM against SLM when the SLM course needs it; code library against live GitHub. Live GitHub (former Step 5) is built here as `specbridge/code_source.py` `GitHubSource`: the same four tools, switched with `CODE_SOURCE=github`. The other switches already exist from Step 7h: `--max-workers 1` (one worker against several), `--brain llm|slm`, `--source library|github`. Each improvement round changes one thing (a prompt in `prompts/*.md`, a limit, a tool) and logs the delta against the previous run record.
 
 ### Step 11 - Real users and course deliverables
 5+ real users who are not classmates; one-page PRD; demo; 10-minute presentation.

@@ -4,6 +4,8 @@ A PM writes a Jira ticket; SpecBridge reads the real code and writes UAT test ca
 
 - What is being built, step by step: [docs/BUILD_STEPS.md](docs/BUILD_STEPS.md)
 - Decisions and open questions: [docs/USER_CLARIFICATIONS.md](docs/USER_CLARIFICATIONS.md)
+- What every file does and where the logic lives: [docs/repo_map.md](docs/repo_map.md)
+- How the agent works (ticket URL to UAT page): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## What you need
 

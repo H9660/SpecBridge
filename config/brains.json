@@ -10,6 +10,7 @@
       "structured_outputs": true,
       "context_window": 1048576,
       "timeout_seconds": 180,
+      "http_retries": 5,
       "extra_body": {"usage": {"include": true}},
       "extra_headers": {"X-Title": "SpecBridge"}
     },

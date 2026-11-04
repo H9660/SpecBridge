@@ -1,11 +1,11 @@
-# Step 2 smoke test - 2026-10-26 23:36
+# Step 2 smoke test - 2026-10-28 18:44
 
 | # | Check | Result | Detail |
 |---|---|---|---|
 | 1 | Download folder exists and is outside OneDrive | PASS | C:\specbridge-work |
 | 2 | All repos on their frozen version, complete, unchanged | PASS | 5/5 OK |
 | 3 | Files the golden tickets touched are readable on disk | PASS | 256/256 files |
-| 4 | No downloaded repos inside the (OneDrive) project folder | PASS | 1.2 MB of project files; nested repos: none |
+| 4 | No downloaded repos inside the (OneDrive) project folder | PASS | 2.2 MB of project files; nested repos: none |
 | 5 | Secrets file (.env) is git-ignored | PASS | .gitignore |
 | 6 | .env is not tracked by git | PASS |  |
 | 7 | .env.example lists every setting | PASS | ATLASSIAN_SITE, ATLASSIAN_EMAIL, ATLASSIAN_API_TOKEN, JIRA_PROJECT_KEY, CONFLUENCE_SPACE_KEY |

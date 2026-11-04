@@ -6,7 +6,7 @@
     use the local Ollama model when it is running and the pieces are embedded.
 4d: links (imports, @openmrs packages, UI wiring across repos), link-following search, agent tools.
 Writes data/smoke_test_step4.md.
-
+.
 Usage:
   py -3.12 scripts/smoke_test_step4.py [--workdir C:/specbridge-work]
 --workdir defaults to SPECBRIDGE_WORKDIR from .env. 4c checks need numpy (in .venv: .venv/bin/python).
@@ -224,7 +224,7 @@ def main():
     except EmbedderError as err:
         check(f"4c Live embedder ({real.model}) works and puts similar meanings closer", "PENDING", str(err)[:160])
         live = False
-    stored_vectors = index.vector_count(real.model)
+    all_embedded = index.vector_count(real.model) == index.piece_count()
     index.close()
 
     # --- scores -----------------------------------------------------------------------------------
@@ -234,7 +234,7 @@ def main():
           len(rows) == 63 and scored == 61, f"{len(rows)} tickets, {scored} scored, "
           f"skipped {[r['key'] for r in rows if not r['scored']]}")
     base = summary["all"]
-    final_name = "hybrid" if live and has_numpy and stored_vectors == index.piece_count() else "combined"
+    final_name = "hybrid" if live and has_numpy and all_embedded else "combined"
     stats, rows, summary = run(workdir, final_name)
     s, plain = summary["all"], summary["no file names in ticket"]
     check(f"4d Final search ({final_name}) is at least as good as the keyword baseline",

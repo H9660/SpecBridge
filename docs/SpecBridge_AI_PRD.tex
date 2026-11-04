@@ -1,0 +1,315 @@
+% SpecBridge PRD - AI for Product Managers capstone (IIIT Hyderabad)
+% Compile with pdflatex (TeX Live, MiKTeX or Overleaf): pdflatex SpecBridge_AI_PRD.tex
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[a4paper,left=14mm,right=14mm,top=12mm,bottom=13mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[scaled=0.94]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{array,tabularx,booktabs}
+\usepackage{enumitem}
+\usepackage[most]{tcolorbox}
+\usepackage[hidelinks]{hyperref}
+
+% ---- colours (same palette as the web version) ------------------------------
+\definecolor{ink}{HTML}{1B2230}
+\definecolor{muted}{HTML}{5B6575}
+\definecolor{accent}{HTML}{2B57C7}
+\definecolor{accentsoft}{HTML}{E8EEFB}
+\definecolor{rulegrey}{HTML}{DFE3EA}
+\definecolor{good}{HTML}{1D7A57}
+\definecolor{warn}{HTML}{A8571C}
+\definecolor{bad}{HTML}{B03A3A}
+
+% ---- page and text ---------------------------------------------------------
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3.5pt}
+\setlist{nosep,leftmargin=1.2em,itemsep=2pt}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{4pt}
+\arrayrulecolor{rulegrey}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% ---- small building blocks ---------------------------------------------------
+\newcommand{\prdsec}[2]{\par\vspace{7pt}{\large\bfseries{\color{accent}#1}\hspace{0.55em}#2}\par\vspace{3pt}}
+\newcommand{\eyebrow}[1]{{\footnotesize\bfseries\color{accent}\textls[120]{\MakeUppercase{#1}}}}
+\newcommand{\boxlabel}[1]{{\scriptsize\bfseries\color{accent}\textls[100]{\MakeUppercase{#1}}}\par\vspace{2pt}}
+\newcommand{\thead}[1]{{\scriptsize\bfseries\color{muted}\textls[80]{\MakeUppercase{#1}}}}
+\newcommand{\note}[1]{{\small\color{muted}#1}}
+\newcommand{\assume}[1]{{\color{warn}#1}}
+\newcommand{\sev}[2]{\tcbox[on line,colframe=#1,colback=white,boxrule=0.5pt,arc=1pt,
+  left=2pt,right=2pt,top=0.5pt,bottom=0.5pt]{\scriptsize\bfseries\ttfamily\color{#1}#2}}
+
+\tcbset{
+  jtbd/.style={colback=accentsoft,colframe=accentsoft,boxrule=0pt,arc=2pt,
+    left=7pt,right=7pt,top=6pt,bottom=6pt},
+  card/.style={colback=white,colframe=rulegrey,boxrule=0.5pt,arc=2pt,
+    left=7pt,right=7pt,top=6pt,bottom=6pt},
+  ticket/.style={card,enhanced,borderline west={2pt}{0pt}{accent}},
+}
+
+\begin{document}
+\color{ink}
+
+% ============================================================================
+% Header
+% ============================================================================
+\eyebrow{AI for Product Managers \textperiodcentered{} IIIT Hyderabad \textperiodcentered{} Capstone project \textperiodcentered{} PRD}
+
+\vspace{2pt}
+{\fontsize{19}{23}\selectfont\bfseries SpecBridge: Jira tickets to codebase-grounded UAT test cases\par}
+
+\vspace{3pt}
+{\small\textbf{Team} {\color{muted}Unmanned Rooks: Hussain Lohawala, Qasim Naik, Rishabh Singh, Dhawal}
+\hspace{1.5em}\textbf{Version} {\color{muted}v0.1 \textperiodcentered{} 28 Oct 2026}\par}
+
+\vspace{4pt}
+Today a PM sees the user journey only after engineers have changed 3--5 repositories, and if it is not
+what the PM meant, the work goes round again. SpecBridge reads the team's real code and shows the PM
+that journey first, as UAT test cases (steps, expected results, affected screens, open questions), so
+PM and engineers agree on it before anything is built.
+
+\vspace{3pt}
+{\color{ink}\rule{\linewidth}{1.2pt}}
+
+% ============================================================================
+\prdsec{1}{User and job-to-be-done}
+\begin{tcbraster}[raster columns=2,raster equal height,raster column skip=10pt]
+\begin{tcolorbox}[jtbd]
+\boxlabel{User}
+A product manager who hands UI tasks to frontend and backend engineers on a product whose
+frontend is split across several repositories.
+\end{tcolorbox}
+\begin{tcolorbox}[jtbd]
+\boxlabel{Job-to-be-done}
+When I hand over a UI task, I want to see and agree the exact user journey, including errors and
+edge cases, before engineers build it, so the first demo is what I meant.
+\end{tcolorbox}
+\end{tcbraster}
+\note{Secondary users: the frontend engineer, who builds from an agreed journey instead of guessing,
+and QA, who later runs the same cases.}
+
+% ============================================================================
+\noindent
+\begin{minipage}[t]{0.485\linewidth}
+\prdsec{2}{Problem}
+\textbf{How it works today:}
+\begin{enumerate}
+  \item The PM gives a UI task to the frontend and backend engineers.
+  \item The frontend engineer translates it into changes across 3--5 repositories.
+  \item Only when the work is done does the engineer demo the user journey to the PM.
+  \item If it is not what the PM meant, the cycle repeats, sometimes several times.
+\end{enumerate}
+\vspace{3pt}
+\textbf{Why:} the journey is never made concrete and agreed before building. The PM writes in product
+language (``let users finalize a bill'') and does not know which screens and flows across the repos
+the change touches, so mismatches, error states and edge cases surface at the demo, the most
+expensive moment to find them.
+
+\textbf{Why now:} current LLMs can read code and plain language together, and a ticket costs cents
+to process.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\linewidth}
+\prdsec{3}{Approach}
+\begin{tcbitemize}[raster columns=3,raster equal height,raster column skip=4pt,raster row skip=4pt,
+  colback=white,colframe=rulegrey,boxrule=0.5pt,arc=1pt,left=3pt,right=3pt,top=2pt,bottom=2pt,
+  fontupper=\footnotesize\ttfamily]
+\tcbitem {\color{muted}1}\ Ticket URL
+\tcbitem[colframe=accent,coltext=accent] {\color{muted}2}\ Understand
+\tcbitem {\color{muted}3}\ Orchestrator
+\tcbitem[colframe=accent,coltext=accent] {\color{muted}4}\ Criterion agents $\times$N
+\tcbitem[colframe=accent,coltext=accent] {\color{muted}5}\ Merge + review
+\tcbitem {\color{muted}6}\ Confluence page
+\end{tcbitemize}
+\vspace{2pt}
+\begin{itemize}
+  \item \textbf{Understand} the ticket: criteria (stated and inferred), screens, questions, risks.
+        Unclear or unsafe tickets get questions, not invented cases.
+  \item \textbf{Agents per acceptance criterion} search a code knowledge base (keywords + local
+        embeddings + links between files across repos) with read-only tools, then write cases that
+        cite the code they read.
+  \item \textbf{An independent reviewer} checks coverage and that every cited screen exists; weak
+        criteria go back for another round.
+  \item \textbf{Model:} Gemini 3.8 Flash via OpenRouter; the model can be swapped through
+        configuration. Built with LangGraph.
+\end{itemize}
+\end{minipage}
+
+% ============================================================================
+\prdsec{4}{Example}
+\begin{tcbraster}[raster columns=2,raster column skip=10pt,raster valign=top,
+  raster force size=false]
+\begin{tcolorbox}[ticket,width=0.36\linewidth]
+\boxlabel{The ticket, as the PM writes it}
+{\bfseries ``Start visit'' does nothing from patient search\par}
+\vspace{3pt}
+When the front-desk user searches for a patient and clicks \textbf{Start visit} on a result, nothing
+happens. Expected: the visit form opens for that patient and the visit can be started.
+\end{tcolorbox}
+\begin{tcolorbox}[card,width=0.62\linewidth]
+\boxlabel{What SpecBridge returns {\normalfont\color{muted}(illustrative)}}
+\note{\textbf{Affected screens:} patient search results, where the button sits, and the start-visit
+form. The button is built in the patient-chart repo and shown in the patient-management search
+screen, so two repos are involved.}
+
+\small
+\begin{tabularx}{\linewidth}{@{}P{12mm}LL@{}}
+\toprule
+\thead{Case} & \thead{Steps} & \thead{Expected result}\\
+\midrule
+\texttt{TC-01}\newline{\color{muted}\scriptsize happy} & Log in as front desk. Search a patient with no
+  active visit. Click \textbf{Start visit} on the result. & The start-visit form opens for that
+  patient; after saving, the visit shows as active.\\
+\midrule
+\texttt{TC-02}\newline{\color{muted}\scriptsize error} & Same steps, while the server rejects the
+  request. & An ``Error starting visit'' message appears; no visit is created.\\
+\bottomrule
+\end{tabularx}
+
+\note{\textbf{Question for the PM:} if the patient already has an active visit, should the button be
+hidden or open that visit?}
+\end{tcolorbox}
+\end{tcbraster}
+\note{The PM reviews this before any code is written. A mismatch, like a different answer to the
+question above, is caught now instead of at the demo.}
+
+% ============================================================================
+\newpage
+\prdsec{5}{Build vs rules}
+\noindent
+\begin{minipage}[t]{0.485\linewidth}
+\textbf{Why rules are not enough}
+\begin{itemize}
+  \item \textbf{Free-text input.} Tickets come in any style, from formal criteria to informal
+        Hinglish. Templates enforce structure, not correctness.
+  \item \textbf{Language-to-code mapping is semantic.} ``Finalize a bill'' must be matched to the
+        right code among 2,322 files in 5 repos. On our golden tickets with no file names, keyword
+        search plus code links finds a changed file in the top 10 for 74\% of tickets; adding AI
+        search by meaning raises it to 79\%. The agent then searches further on its own.
+  \item \textbf{Reasoning, not lookup.} Inferring unstated criteria, negative paths and
+        contradictions in a ticket needs judgment.
+\end{itemize}
+\vspace{4pt}
+\textbf{Where we keep rules (deterministic guardrails)}\par
+Team-only ticket intake, secret redaction, read-only AI tools, verification of every cited file and
+screen, publishing done only by code, cost and time caps.
+
+\vspace{4pt}
+\textbf{Why AI is worth it}\par
+An AI draft costs about \$0.02--0.07 and 1--2 minutes per ticket (estimate from our measured token
+sizes), against \assume{an assumed 30--60 minutes} of PM time per ticket today, and it brings code
+knowledge the PM lacks. \assume{The time saving is an assumption we will measure in customer
+sessions.}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\linewidth}
+\textbf{Accuracy needed and what errors cost}
+
+\small
+\begin{tabularx}{\linewidth}{@{}LP{27mm}P{17mm}@{}}
+\toprule
+\thead{Error} & \thead{Cost} & \thead{Tolerance}\\
+\midrule
+Leaks a secret, or obeys instructions hidden in a ticket & Security incident & \sev{bad}{ZERO}\\
+\midrule
+Invents a screen or flow that does not exist & Wasted PM/dev time; trust lost & \sev{warn}{LOW}\\
+\midrule
+Misses a case (e.g.\ an error state) & Bug found later; rework (PM review catches most) & \sev{good}{SOME}\\
+\midrule
+Awkward wording or a duplicate case & Minor edit & \sev{good}{SOME}\\
+\bottomrule
+\end{tabularx}
+
+\note{Output is a draft a human approves, so it need not be perfect; grounding and safety must be
+near-perfect.}
+\end{minipage}
+
+% ============================================================================
+\prdsec{6}{Risks and mitigations}
+\small
+\begin{tabularx}{\linewidth}{@{}P{0.31\linewidth}L@{}}
+\toprule
+\thead{Risk} & \thead{Mitigation}\\
+\midrule
+Hallucinated screens, steps or code references & Every case must cite code it read; the reviewer
+  verifies each cited file, line and screen name against the code.\\
+\midrule
+Prompt injection or secrets inside tickets & Ticket text treated as data; secrets removed before the
+  AI sees them; AI has read-only tools; only code publishes.\\
+\midrule
+Vague or contradictory tickets & A gate turns them into questions for the PM instead of guessed test
+  cases.\\
+\midrule
+Search misses the right code (79\% hit rate on fair tickets today) & Agents search again per
+  criterion; misses are logged and fixed in each improvement round.\\
+\midrule
+The build still drifts from the agreed journey & The approved page is the engineer's direction and
+  the checklist for the demo, so drift is caught step by step.\\
+\midrule
+Overwriting the PM's edits on re-runs & Updates never overwrite human edits; new drafts go in as a
+  page comment.\\
+\midrule
+Cost or latency runaway; free-tier model capacity & Caps of \$0.25 and 2 review rounds per ticket;
+  fallback from free to paid capacity.\\
+\midrule
+Our evaluation flatters us & Real tickets fixed after a frozen code version, answer key from the
+  real fixes, links to the fix removed; 18 tickets that name code files scored separately;
+  6 adversarial tickets.\\
+\bottomrule
+\end{tabularx}
+\normalsize
+
+% ============================================================================
+\noindent
+\begin{minipage}[t]{0.485\linewidth}
+\prdsec{7}{Success metric}
+\textbf{Outcome we want:} fewer demo-and-rework rounds per UI task.
+\note{Baseline: rounds per task today, asked in customer interviews.}
+
+\textbf{Primary (measurable in the capstone):} share of generated test cases the PM keeps without
+edits, i.e.\ the journey was right before building.
+\note{Measured in 5+ sessions with real PMs, engineers or QA (not classmates), with verbatims.}
+
+\textbf{Also tracked:} mismatches the page surfaced before build (per PM), engineer clarity rating
+(1--5), tokens, cost and time per ticket.
+
+\note{\textbf{Test bed:} OpenMRS 3, 5 real connected React repos frozen at 31 Mar 2026; golden set
+of 63 real tickets fixed after that date (answer key from the real code changes) + 6 hand-written
+adversarial tickets. The team picks and labels the final 30--50.}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\linewidth}
+\prdsec{8}{Ship gate {\normalsize\normalfont\color{muted}(proposed, team to confirm)}}
+\small
+\begin{tabularx}{\linewidth}{@{}L>{\raggedleft\arraybackslash\ttfamily}p{22mm}@{}}
+\toprule
+\thead{Measure (golden set)} & \thead{Gate}\\
+\midrule
+Acceptance criteria covered by at least one case & $\geq$ 90\%\\
+\midrule
+Cited files and screens verified in code (grounding) & $\geq$ 95\%\\
+\midrule
+Adversarial tickets handled safely & 6 / 6\\
+\midrule
+Human rubric, 2 raters (accuracy, grounding, usefulness) & $\geq$ 4 / 5\\
+\midrule
+LLM judge agrees with humans on spot-checks & $\geq$ 80\%\\
+\midrule
+Cost / time per ticket & $\leq$ \$0.10 / 3 min\\
+\bottomrule
+\end{tabularx}
+\normalsize
+\end{minipage}
+
+% ============================================================================
+\vfill
+{\color{rulegrey}\rule{\linewidth}{0.5pt}}
+\note{\footnotesize Out of scope: writing or changing code, automated tests, backend design, running
+the app, auto-approving pages. Sources: team proposal (Oct 2026), project build log and measured
+search scores (Step 4, 27 Oct 2026).}
+
+\end{document}

@@ -1,12 +1,12 @@
 {
  "stats": {
   "method": "combined",
-  "date": "2026-10-27 02:33",
+  "date": "2026-10-27 11:48",
   "files_indexed": 2322,
   "source_files": 1755,
-  "index_built_now": false,
-  "build_seconds": 0.0,
-  "search_ms_per_ticket": 18.9,
+  "index_built_now": true,
+  "build_seconds": 3.2,
+  "search_ms_per_ticket": 26.6,
   "commits": {
    "core": "cf088d5277b12b39022095ce4a9ec9e70e8373e3",
    "patient-chart": "8ede2e3a641d470abcd31fe496f5714f2b4fc600",
@@ -20,21 +20,21 @@
  "summary": {
   "all": {
    "tickets": 61,
-   "mrr": 0.5183331535067311,
+   "mrr": 0.5265298748182066,
    "hit@5": 0.7049180327868853,
    "recall@5": 0.43086308045324434,
    "hit@10": 0.8032786885245902,
-   "recall@10": 0.5844725402102451,
+   "recall@10": 0.5762758188987697,
    "hit@20": 0.8688524590163934,
    "recall@20": 0.6564798589388753
   },
   "no file names in ticket": {
    "tickets": 43,
-   "mrr": 0.46709276815295964,
+   "mrr": 0.47872067512970384,
    "hit@5": 0.627906976744186,
    "recall@5": 0.39746216315983757,
    "hit@10": 0.7441860465116279,
-   "recall@10": 0.5151517732913082,
+   "recall@10": 0.503523866314564,
    "hit@20": 0.8372093023255814,
    "recall@20": 0.6028196609591958
   },
@@ -50,7 +50,7 @@
   },
   "group: clear": {
    "tickets": 23,
-   "mrr": 0.5735720375106564,
+   "mrr": 0.595311167945439,
    "hit@5": 0.8260869565217391,
    "recall@5": 0.5195652173913043,
    "hit@10": 0.8695652173913043,
@@ -74,7 +74,7 @@
    "hit@5": 0.7857142857142857,
    "recall@5": 0.48801020408163265,
    "hit@10": 0.8571428571428571,
-   "recall@10": 0.6081632653061224,
+   "recall@10": 0.5724489795918367,
    "hit@20": 0.8571428571428571,
    "recall@20": 0.6489795918367347
   },
@@ -252,10 +252,10 @@
    "targets": 3,
    "missing": 0,
    "scored": true,
-   "first_rank": 2,
+   "first_rank": 1,
    "top": [
-    "core/packages/apps/esm-login-app/src/login/login.component.tsx",
     "core/packages/apps/esm-login-app/src/config-schema.ts",
+    "core/packages/apps/esm-login-app/src/login/login.component.tsx",
     "core/packages/apps/esm-login-app/src/location-picker/location-picker-view.component.tsx",
     "core/packages/framework/esm-styleguide/src/location-picker/location-picker.component.tsx",
     "core/packages/framework/esm-styleguide/src/location-picker/location-picker.resource.ts"
@@ -266,7 +266,7 @@
    "recall@10": 0.6666666666666666,
    "hit@20": true,
    "recall@20": 1.0,
-   "rr": 0.5
+   "rr": 1.0
   },
   {
    "key": "O3-5981",
@@ -1024,14 +1024,14 @@
    "top": [
     "core/packages/framework/esm-api/src/current-user.ts",
     "core/packages/apps/esm-login-app/src/login/login.component.tsx",
-    "core/packages/apps/esm-login-app/src/config-schema.ts",
     "core/packages/framework/esm-expression-evaluator/src/evaluator.ts",
-    "core/packages/framework/esm-api/src/openmrs-fetch.ts"
+    "core/packages/framework/esm-api/src/openmrs-fetch.ts",
+    "core/packages/apps/esm-login-app/src/change-password/change-password.component.tsx"
    ],
    "hit@5": true,
    "recall@5": 0.5,
    "hit@10": true,
-   "recall@10": 1.0,
+   "recall@10": 0.5,
    "hit@20": true,
    "recall@20": 1.0,
    "rr": 0.5

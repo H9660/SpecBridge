@@ -17,6 +17,7 @@ from specbridge.env import PROJECT, load_env
 
 CONFIG = PROJECT / "config" / "brains.json"
 RETRY_STATUS = {408, 429, 500, 502, 503, 504}
+MAX_WAIT_SECONDS = 30
 
 
 class BrainError(RuntimeError):
@@ -35,17 +36,18 @@ class Reply:
     cost_usd: float | None
     seconds: float
     attempts: int
+    byok: bool | None = None  # True when OpenRouter used the team's own provider key (BYOK)
 
 
 class OpenAIChatBrain:
     """Any server that speaks the OpenAI chat-completions format: OpenRouter, Ollama, vLLM, OpenAI."""
 
-    def __init__(self, name, profile, api_key=None, http_retries=2):
+    def __init__(self, name, profile, api_key=None, http_retries=None):
         self.name, self.profile = name, profile
         self.provider, self.model = profile["provider"], profile["model"]
         self.base_url = profile["base_url"].rstrip("/")
         self._api_key = api_key
-        self.http_retries = http_retries
+        self.http_retries = profile.get("http_retries", 2) if http_retries is None else http_retries
 
     def __repr__(self):
         return f"<Brain {self.name}: {self.provider} {self.model}>"
@@ -57,17 +59,21 @@ class OpenAIChatBrain:
         req = urllib.request.Request(f"{self.base_url}{path}", data=json.dumps(body).encode(),
                                      headers=headers, method="POST")
         for attempt in range(self.http_retries + 1):
+            wait = min(2 ** (attempt + 1), MAX_WAIT_SECONDS)
             try:
                 with urllib.request.urlopen(req, timeout=self.profile.get("timeout_seconds", 180)) as resp:
                     return json.load(resp)
             except urllib.error.HTTPError as err:
                 detail = err.read().decode(errors="ignore")[:300]
                 if err.code not in RETRY_STATUS or attempt == self.http_retries:
-                    raise BrainError(f"{self.provider} returned {err.code}: {detail}") from None
+                    raise BrainError(f"{self.provider} returned {err.code} after {attempt + 1} tries: {detail}") from None
+                hint = err.headers.get("Retry-After", "")
+                if hint.isdigit():  # busy servers (e.g. free-tier keys) say how long to wait
+                    wait = min(int(hint), MAX_WAIT_SECONDS)
             except (urllib.error.URLError, TimeoutError) as err:
                 if attempt == self.http_retries:
                     raise BrainError(f"cannot reach {self.provider} at {self.base_url}: {err}") from None
-            time.sleep(2 ** attempt)
+            time.sleep(wait)
 
     def _chat(self, messages, max_tokens, temperature, response_format=None):
         body = {"model": self.model, "messages": messages, "max_tokens": max_tokens,
@@ -76,9 +82,13 @@ class OpenAIChatBrain:
             body["response_format"] = response_format
         data = self._post("/chat/completions", body)
         try:
-            text = data["choices"][0]["message"]["content"] or ""
+            choice = data["choices"][0]
+            text = choice["message"]["content"] or ""
         except (KeyError, IndexError, TypeError):
             raise BrainError(f"{self.provider} sent an unexpected answer: {str(data)[:300]}") from None
+        if not text.strip() and choice.get("finish_reason") == "length":
+            # thinking models spend part of max_tokens on hidden reasoning before writing the answer
+            raise BrainError(f"{self.model} used all {max_tokens} tokens before answering; raise max_tokens")
         return text, data.get("usage") or {}, data.get("model", self.model)
 
     def ask(self, prompt, system=None, max_tokens=2000, temperature=0.0):
@@ -116,7 +126,8 @@ class OpenAIChatBrain:
                      input_tokens=sum(u.get("prompt_tokens", 0) for u in usage_total),
                      output_tokens=sum(u.get("completion_tokens", 0) for u in usage_total),
                      cost_usd=sum(costs) if costs else None,
-                     seconds=round(time.time() - start, 2), attempts=attempts)
+                     seconds=round(time.time() - start, 2), attempts=attempts,
+                     byok=any(u.get("is_byok") for u in usage_total) if any("is_byok" in u for u in usage_total) else None)
 
     def model_available(self):
         """True if the server lists this brain's model (GET /models)."""

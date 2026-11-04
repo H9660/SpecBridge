@@ -1,17 +1,17 @@
 # Code search scores - method: combined
 
-Run 2026-10-27 02:33. Index: 2322 code files (1755 non-test), 3827 pieces; already up to date; search 18.9 ms per ticket.
+Run 2026-10-27 11:48. Index: 2322 code files (1755 non-test), 3827 pieces; built now in 3.2 s; search 26.6 ms per ticket.
 
 hit@k = share of tickets with at least one really-changed file in the top k; recall@k = share of each ticket's changed files found in the top k (averaged); mrr = average of 1 / rank of the first changed file found.
 
 | Tickets | tickets | hit@5 | hit@10 | hit@20 | recall@5 | recall@10 | recall@20 | mrr |
 |---|---|---|---|---|---|---|---|---|
-| all | 61 | 0.70 | 0.80 | 0.87 | 0.43 | 0.58 | 0.66 | 0.52 |
-| no file names in ticket | 43 | 0.63 | 0.74 | 0.84 | 0.40 | 0.52 | 0.60 | 0.47 |
+| all | 61 | 0.70 | 0.80 | 0.87 | 0.43 | 0.58 | 0.66 | 0.53 |
+| no file names in ticket | 43 | 0.63 | 0.74 | 0.84 | 0.40 | 0.50 | 0.60 | 0.48 |
 | file names in ticket (mentions-files) | 18 | 0.89 | 0.94 | 0.94 | 0.51 | 0.75 | 0.78 | 0.64 |
-| group: clear | 23 | 0.83 | 0.87 | 0.91 | 0.52 | 0.67 | 0.74 | 0.57 |
+| group: clear | 23 | 0.83 | 0.87 | 0.91 | 0.52 | 0.67 | 0.74 | 0.60 |
 | group: cross-repo | 6 | 0.67 | 1.00 | 1.00 | 0.18 | 0.43 | 0.52 | 0.64 |
-| group: normal | 14 | 0.79 | 0.86 | 0.86 | 0.49 | 0.61 | 0.65 | 0.54 |
+| group: normal | 14 | 0.79 | 0.86 | 0.86 | 0.49 | 0.57 | 0.65 | 0.54 |
 | group: security | 1 | 1.00 | 1.00 | 1.00 | 0.25 | 0.50 | 0.75 | 0.20 |
 | group: vague | 17 | 0.47 | 0.59 | 0.76 | 0.36 | 0.50 | 0.59 | 0.40 |
 
@@ -27,7 +27,7 @@ Not scored (no changed file existed at the frozen version): O3-5742, O3-5729
 | SPEC-4 (O3-5986) | cross-repo | 13 | 6 | patient-chart/packages/esm-patient-attachments-app/src/camera-media-uploader/camera-media-uploader.component.tsx |
 | SPEC-5 (O3-5823) | cross-repo * | 11 | 1 | patient-chart/packages/esm-patient-notes-app/src/types/index.ts |
 | SPEC-6 (O3-5763) | cross-repo | 27 | 1 | patient-management/packages/esm-service-queues-app/src/past-visit/past-visit.component.tsx |
-| SPEC-7 (O3-6028) | clear | 3 | 2 | core/packages/apps/esm-login-app/src/login/login.component.tsx |
+| SPEC-7 (O3-6028) | clear | 3 | 1 | core/packages/apps/esm-login-app/src/config-schema.ts |
 | SPEC-8 (O3-5981) | clear * | 1 | - | patient-chart/packages/esm-form-engine-app/src/form-renderer/repeat/delete-question.modal.tsx |
 | SPEC-9 (O3-5849) | clear | 3 | 1 | core/packages/framework/esm-styleguide/src/workspaces2/workspace2-close-prompt.modal.tsx |
 | SPEC-10 (O3-6026) | clear | 2 | 1 | patient-chart/packages/esm-patient-vitals-app/src/vitals/vitals-overview.component.tsx |

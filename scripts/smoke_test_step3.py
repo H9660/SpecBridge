@@ -60,7 +60,9 @@ class FakeModelServer:
                 status, content = outer.replies.pop(0)
                 if status != 200:
                     return self._send(status, {"error": {"message": content}})
-                self._send(200, {"model": body["model"], "choices": [{"message": {"content": content}}],
+                finish = "length" if content is None else "stop"
+                self._send(200, {"model": body["model"],
+                                 "choices": [{"message": {"content": content}, "finish_reason": finish}],
                                  "usage": {"prompt_tokens": 10, "completion_tokens": 5, "cost": 0.0001}})
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -164,6 +166,17 @@ def main():
               msg[:120])
     attempt("Server busy is retried; wrong key gives a clear error without showing the key", http_errors)
 
+    def out_of_tokens():
+        fake.script((200, None))
+        try:
+            fake.brain().ask("hi", max_tokens=20)
+            msg = "no error (empty answer returned silently)"
+        except BrainError as err:
+            msg = str(err)
+        check("Model that runs out of tokens while thinking gives a clear error, not an empty answer",
+              "raise max_tokens" in msg, msg[:120])
+    attempt("Model that runs out of tokens while thinking gives a clear error, not an empty answer", out_of_tokens)
+
     def slm_path():
         fake.script((200, '{"kind": "bug", "steps": ["a"]}'))
         r = fake.brain("slm", model="qwen2.5-coder:3b").ask_json(TICKET, TICKET_SCHEMA)
@@ -191,7 +204,7 @@ def main():
     else:
         def live_calls():
             b = load_brain("llm", env=real_env)
-            r = b.ask("Reply with exactly the word: ready", max_tokens=20)
+            r = b.ask("Reply with exactly the word: ready", max_tokens=300)
             check(names[0], "ready" in r.text.lower(), f"{r.model}: {r.text.strip()!r}, ${r.cost_usd}, {r.seconds}s")
             r = b.ask_json(f"Classify this ticket and list 2-4 short test steps.\n\n{TICKET}", TICKET_SCHEMA,
                            max_tokens=400)
