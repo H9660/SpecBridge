@@ -10,6 +10,7 @@ import subprocess
 MAX_LINES = 400
 MAX_MATCHES = 50
 
+# TODO WE ARE NOT VALIDATING THE OUTPUT SCHEMA HERE. IT SHOULD BE VALIDATED. BUT WE CAN DO IT IN SOME OTHER PROPER FILE AS WELL.
 TOOLS = [
     {"name": "search_code", "description": "Find the code behind a screen or behaviour described in plain words "
      "(e.g. a ticket). Returns the best files with their best-matching piece and where they appear in the app.",

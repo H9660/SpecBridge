@@ -11,3 +11,5 @@ __pycache__/
 .idea/
 Thumbs.db
 desktop.ini
+tests/
+spec/

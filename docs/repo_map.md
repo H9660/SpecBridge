@@ -94,6 +94,8 @@ specbridge/retrieval_eval.py      scores search against the answer key
 | [`docs/golden_set_eval_rubric_v0.md`](golden_set_eval_rubric_v0.md) | Course activity 3: 10 labelled golden examples (5 happy, 3 edge, 2 adversarial) from the `SPEC` tickets, rubric v0 (coverage, groundedness, safety and honesty, with pass/partial/fail anchors), who scores what (code checks, LLM judge, 2 human raters) and how the judge is spot-checked. Labels await team sign-off. |
 | [`docs/customer_plan.md`](customer_plan.md) | Course activity 4: the 5 real users (U1-U5) with roles and why each fits, outreach and session dates this week, the 30-minute session script, notes template and status tracker. |
 | [`docs/PRD_TEAM07.pdf`](PRD_TEAM07.pdf) | Team 07's PRD as submitted (5 pages, with references), the team's final layout of the PRD. |
+| [`docs/SpecBridge_Mid_Submission_Report.pdf`](SpecBridge_Mid_Submission_Report.pdf) | Mid-submission progress report (Automated Software Engineering project), 4 A4 pages: Phase 1 milestones (Steps 1-4) with smoke-test results and search scores, commit history, agent architecture, Phase 2 plan (Steps 6-11), risks. Exported from the live doc https://claude.ai/artifact/RVxMfkCBzY1qymgMCusdSK; re-export after changes. |
+| [`CLAUDE.md`](../CLAUDE.md) | Guidance for Claude Code: commands, architecture, working rules for this repo. |
 | [`docs/BUILD_STEPS.md`](BUILD_STEPS.md) | The 11 build steps: done, in progress, planned. |
 | [`docs/USER_CLARIFICATIONS.md`](USER_CLARIFICATIONS.md) | Every question asked and the decision taken. |
 | [`docs/repo_map.md`](repo_map.md) | This file. |

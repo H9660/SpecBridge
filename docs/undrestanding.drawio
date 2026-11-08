@@ -1,0 +1,19 @@
+<mxfile host="65bd71144e">
+    <diagram id="q0Bs3lW5fcJCbnLYaADp" name="Page-1">
+        <mxGraphModel dx="460" dy="464" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="Q2ee3iu-v22N1S3JilLB-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;b&gt;Tools:&amp;nbsp;&lt;/b&gt;&lt;div&gt;&lt;b&gt;1. Read file&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;2. Search code (Extract at most 10 files form teh repo)&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&amp;nbsp;(3. Grep&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;4. Find usages&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;All t&lt;/b&gt;&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="180" width="410" x="15" y="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="ZGC5bXq2ViajMgSHpO2O-4" edge="1" parent="1" source="ZGC5bXq2ViajMgSHpO2O-2" style="edgeStyle=none;html=1;entryX=0.256;entryY=0.111;entryDx=0;entryDy=0;entryPerimeter=0;" target="Q2ee3iu-v22N1S3JilLB-1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ZGC5bXq2ViajMgSHpO2O-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="codeindex.py -&amp;gt; index" vertex="1">
+                    <mxGeometry height="30" width="100" x="20" y="40" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
