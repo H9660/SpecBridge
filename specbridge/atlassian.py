@@ -1,27 +1,33 @@
-"""Small client for the team's own Atlassian site (Jira + Confluence), configured from .env."""
+"""Small client for the team's own Atlassian site (Jira + Confluence), configured from .env.
+
+Used by the agent (intake reads tickets; publish will write pages and comments) and by the setup scripts.
+Errors carry the HTTP status but never the credentials.
+"""
 import base64
 import json
-import pathlib
-import sys
 import urllib.error
+import urllib.parse
 import urllib.request
-
-PROJECT = pathlib.Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT))
-from specbridge.env import load_env  # noqa: E402,F401
 
 REQUIRED = ("ATLASSIAN_SITE", "ATLASSIAN_EMAIL", "ATLASSIAN_API_TOKEN", "JIRA_PROJECT_KEY", "CONFLUENCE_SPACE_KEY")
 
 
-def missing_settings(env):
-    return [k for k in REQUIRED if not env.get(k)]
+class JiraError(RuntimeError):
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
+
+
+def missing_settings(env, required=REQUIRED):
+    return [k for k in required if not env.get(k)]
 
 
 class Atlassian:
-    def __init__(self, env):
+    def __init__(self, env, timeout=60):
         self.site = env["ATLASSIAN_SITE"].rstrip("/")
         self.project = env["JIRA_PROJECT_KEY"]
-        self.space = env["CONFLUENCE_SPACE_KEY"]
+        self.space = env.get("CONFLUENCE_SPACE_KEY")
+        self.timeout = timeout
         token = base64.b64encode(f"{env['ATLASSIAN_EMAIL']}:{env['ATLASSIAN_API_TOKEN']}".encode()).decode()
         self.headers = {"Authorization": f"Basic {token}", "Accept": "application/json",
                         "Content-Type": "application/json"}
@@ -30,14 +36,20 @@ class Atlassian:
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(f"{self.site}{path}", data=data, method=method, headers=self.headers)
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = resp.read()
                 return json.loads(raw) if raw else None
         except urllib.error.HTTPError as err:
-            raise RuntimeError(f"{method} {path} -> {err.code}: {err.read().decode(errors='ignore')[:300]}") from None
+            detail = err.read().decode(errors="ignore")[:300]
+            raise JiraError(f"{method} {path} -> {err.code}: {detail}", err.code) from None
 
     def whoami(self):
         return self.request("GET", "/rest/api/3/myself")
+
+    def get_issue(self, key, fields="summary,issuetype,status,labels,description"):
+        """One issue, read-only: {key, fields: {...}}."""
+        query = urllib.parse.urlencode({"fields": fields})
+        return self.request("GET", f"/rest/api/3/issue/{urllib.parse.quote(key)}?{query}")
 
     def issue_types(self):
         """Issue type name -> id for the configured Jira project."""

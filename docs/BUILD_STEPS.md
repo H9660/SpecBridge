@@ -18,7 +18,7 @@ Plan section = section of [autonomous_software_engineering_plan.md](../autonomou
 | 3 | Swappable brain: one interface for LLM and SLM | E2 | Done (SLM part waits until the SLM course needs it) |
 | 4 | Code library: index the repos and search them locally (SQLite + numpy) | E4 | Done (search 0.79 vs provisional 0.80 bar on tickets without file names - see 4c) |
 | 5 | Live GitHub code reading (second approach, to compare) | E4 / E5 | Moved into Step 10 (2026-10-28) |
-| 6 | Ticket reader: 6a intake, 6b understand, 6c clarify (pull out requirements; flag vague or unsafe tickets) | E8-S1 | Next |
+| 6 | Ticket reader: 6a intake, 6b understand, 6c clarify (pull out requirements; flag vague or unsafe tickets) | E8-S1 | In progress - agent built node by node in `specbridge/agent/` (see "Agent nodes" below): nodes 0 START and 1 intake done, node 2 understand next |
 | 7 | Agent (LangGraph): 7a skeleton + state + checkpointer, 7b code source, 7c orchestrator, 7d criterion worker, 7e e2e worker, 7f merge, 7g reviewer, 7h wire up and limits | E6, E8 | Planned |
 | 8 | Output: 8a render + save_local, 8b publish to Confluence and comment on Jira, 8c command line + simple local page, 8d bot account | E9, E11, E12 | Planned |
 | 9 | Golden answers and scoring: rubric, LLM judge, ship gate | E10 | Planned |
@@ -106,6 +106,21 @@ Every box in [architecture.drawio](architecture.drawio) and the step that builds
 - **Files:** `specbridge/embedder.py`, `config/embedder.json`, `specbridge/code_index.py`
 - **Smoke test (all of Step 4):** `py -3.12 scripts/smoke_test_step4.py` -> `data/smoke_test_step4.md` - 23 pass, 1 warn (hybrid at 0.79 without file names, just below the provisional 0.80 bar), 0 pending.
 
+### Agent nodes (from 2026-11-06)
+Steps 6-8 are built **node by node in the order of [architecture.drawio](architecture.drawio)**: START (0), intake (1), understand (2), clarify (3), orchestrator (4), criterion_worker (5), e2e_worker (6), merge (7), reviewer (8), render (9), save_local (10), publish (11). For each node the user approves a spec (behaviour, edge cases, tests) before code is written; the graph grows by one node each time. Code in `specbridge/agent/`, prompts in `prompts/`, tests in `tests/agent/` (pytest). Packages pinned in `requirements.txt`.
+
+#### Node 0 - START (done 2026-11-07)
+- **Did:** `scripts/run_ticket.py <ticket URL or key> [--mode dry-run|eval] [--run-id ID --resume] [--no-preflight]` -> `run_ticket()` in `specbridge/agent/graph.py`. Checks the request (reference not empty, at most 2,000 characters; mode `dry-run` or `eval`, `live` refused until publish exists; safe run id); loads and checks `config/agent.json` (defaults if missing); brain check (`preflight.py`: key set; OpenRouter accepts it, its spending limit is not used up, the model is offered; low account credit only a warning because BYOK calls still work; no question sent to the model); creates the run; runs START -> intake (placeholder) -> END with a SQLite checkpointer in `data/runs/checkpoints.sqlite`; writes `data/runs/<ticket>/<run_id>.json` however the run ends (complete, paused, error, interrupted). Paused, crashed and Ctrl-C runs resume with `--resume --run-id`. `data/runs/` is git-ignored.
+- **Files:** `specbridge/agent/graph.py`, `state.py`, `limits.py`, `preflight.py`, `run_record.py`, `nodes/intake.py` (placeholder), `config/agent.json`, `scripts/run_ticket.py`, `tests/agent/conftest.py`, `tests/agent/test_start.py`
+- **Tests:** `.venv/bin/python -m pytest tests/agent/test_start.py` -> 61 pass (including the live brain check and a live command-line run).
+
+#### Node 1 - intake (done 2026-11-07)
+- **Did:** `specbridge/agent/nodes/intake.py` replaces the placeholder; the graph is START -> intake -> END. Reads the reference (ticket URL, board link with `selectedIssue=`, or the key, any case); refuses anything that is not https on exactly `ATLASSIAN_SITE` (other hosts, look-alikes, `user@host`, IPs, other ports) or not project `SPEC`, before any network call; fetches summary, type, status, labels and description read-only (one retry on 429/5xx/network; 404, 401/403 and others give clear messages; the token never appears). `specbridge/ticket_text.py` turns the rich text into plain text that keeps headings, numbered / bulleted / nested lists, code blocks, quotes and tables; drops images, shows @mentions as "(someone)" and links as their text only. Secrets (passwords, API keys, tokens, JWTs, private keys) become `<redacted-secret>` in the title, text and labels before anything is stored; lines aimed at the AI are flagged `possible-injection` and kept. Other flags: `empty-description`, `truncated` (over 20,000 characters), `attachments-dropped`, `mentions-files`. Any status is accepted. Output: `state["ticket"] = {key, url, type, status, title, text, labels, flags}`; the command line prints it. A failure ends the run with status `error`; network failures can be resumed.
+- **Also:** the Jira client moved from `scripts/atlassian.py` to `specbridge/atlassian.py` (new `get_issue`, `JiraError` with the HTTP status); `import_tickets.py`, `import_adversarial.py` and `smoke_test_step2.py` import it from there. The Step 2 smoke test's folder-size check now counts only files git would track (it had started counting the git-ignored `.venv`).
+- **Checked on all 69 real tickets:** every one fetches and cleans; only SPEC-65 has secrets redacted (both planted secrets gone, "password field" text untouched) and only SPEC-66 is flagged for instructions to the AI; 18 tickets name code files; text is 153-5,537 characters.
+- **Files:** `specbridge/agent/nodes/intake.py`, `specbridge/ticket_text.py`, `specbridge/atlassian.py`, `scripts/run_ticket.py`, `tests/agent/test_intake.py`, `tests/agent/conftest.py` (fake Jira), `tests/agent/fixtures/jira/` (8 saved real tickets)
+- **Tests:** `.venv/bin/python -m pytest tests/agent` -> 183 pass (4 live: all 69 tickets, fixtures still match Jira, the live brain check and a live command-line run).
+
 ## Planned
 
 ### Step 5 - Live GitHub reading (moved into Step 10)
@@ -170,7 +185,7 @@ The last part of the graph: turn the plan into a Confluence page, publish it, an
 - **Smoke test:** a saved run record renders with no network; the blank columns are blank; a needs-clarification record renders without cases; every evidence entry shows file and lines.
 
 #### 8b - `publish` (the only node that writes)
-- **Build:** `specbridge/publish.py`; extend `scripts/atlassian.py` with page find/create/update and comment create/update. Create or update the page in space `UAT`, found by ticket key, labelled with the key and `awaiting-pm-review`; add or update one comment on the ticket linking to it. If someone other than SpecBridge edited the page since the last run, the new draft goes in as a comment on the page instead (D10). Scan the output for secret-like text before publishing.
+- **Build:** `specbridge/publish.py`; extend `specbridge/atlassian.py` with page find/create/update and comment create/update. Create or update the page in space `UAT`, found by ticket key, labelled with the key and `awaiting-pm-review`; add or update one comment on the ticket linking to it. If someone other than SpecBridge edited the page since the last run, the new draft goes in as a comment on the page instead (D10). Scan the output for secret-like text before publishing.
 - **Smoke test:** run the same ticket twice -> one page, one comment; edit the page by hand, run again -> the edit survives and the new draft appears as a comment; a write outside `UAT` or to another ticket is refused; a planted secret blocks publishing.
 
 #### 8c - Command line and simple local page

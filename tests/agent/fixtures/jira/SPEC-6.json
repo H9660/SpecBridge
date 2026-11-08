@@ -1,0 +1,505 @@
+{
+ "key": "SPEC-6",
+ "fields": {
+  "summary": "Unify the Current visit and Previous visit views",
+  "issuetype": {
+   "name": "Story"
+  },
+  "description": {
+   "type": "doc",
+   "version": 1,
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "When you expand a queue entry, the "
+      },
+      {
+       "type": "text",
+       "text": "Current visit",
+       "marks": [
+        {
+         "type": "em"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " and "
+      },
+      {
+       "type": "text",
+       "text": "Previous visit",
+       "marks": [
+        {
+         "type": "em"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " tabs render the same kinds of visit information — notes, diagnoses, vitals, medications, but with the queue app's own bespoke, duplicated implementations. Each tab parses encounters its own way (the two copies have drifted, causing bugs like duplicated notes) and renders with its own layout/styling, so the tabs look different from each other and from how the same data appears in the patient chart."
+      }
+     ],
+     "attrs": {
+      "localId": "1f1675d1a3b0"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Rather than fix these copies in place, the queue app should reuse the components the patient chart already has."
+      }
+     ],
+     "attrs": {
+      "localId": "c1ec1cee5db4"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Steps to reproduce",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "90e1538bc6c4"
+     }
+    },
+    {
+     "type": "orderedList",
+     "attrs": {
+      "order": 1,
+      "localId": "cfd6958ea2a5"
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "b7479311e641"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Expand a queue entry and open the "
+          },
+          {
+           "type": "text",
+           "text": "Current visit",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " tab."
+          }
+         ],
+         "attrs": {
+          "localId": "056a8a7669b8"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "c75450ccae2e"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Open the "
+          },
+          {
+           "type": "text",
+           "text": "Previous visit",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " tab for the same patient."
+          }
+         ],
+         "attrs": {
+          "localId": "7ed83445fde7"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "983061997b0a"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Note that the same kinds of information are parsed/laid out/styled differently between the two tabs and from the patient chart."
+          },
+          {
+           "type": "hardBreak"
+          }
+         ],
+         "attrs": {
+          "localId": "10e5646688f6"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Expected — single PR that removes the redundancy and adopts shared components",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "c8b413406c36"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "e21654215709"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Current visit tab",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — consume the patient chart's existing "
+          },
+          {
+           "type": "text",
+           "text": "current-visit-summary",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " extension via an extension slot (the same cross-app reuse mechanism the ward app uses), instead of the bespoke queue component."
+          }
+         ],
+         "attrs": {
+          "localId": "ee10925224c5"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "ff48f764086c"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Previous visit tab",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — reuse the patient chart's visit-summary component; since it isn't shared today, extract it into a shared library (the style guide/patient common lib) so both apps consume one implementation."
+          }
+         ],
+         "attrs": {
+          "localId": "6497ac3d28fa"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "cfd9b1325ef3"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Drop the queue app's duplicated encounter-parsing logic and its bespoke vitals widget along the way (they're replaced by the shared components, which already parse encounters and render vitals via the shared "
+          },
+          {
+           "type": "text",
+           "text": "patient-vitals-info",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " extension)."
+          }
+         ],
+         "attrs": {
+          "localId": "84473cd10c80"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0ee4a0085aeb"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Result: the visit views match the O3 look & feel, with shared components living in the style guide."
+          }
+         ],
+         "attrs": {
+          "localId": "db645b226015"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "26759991a55a"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Notes",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "5f1156850043"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "1ece7ba51317"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Cross-repo",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — touches this app, "
+          },
+          {
+           "type": "text",
+           "text": "openmrs-esm-patient-chart",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", and the shared/style-guide package; coordinate across both."
+          }
+         ],
+         "attrs": {
+          "localId": "0b254db89225"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "f2decfe69373"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Supersedes (consolidated here)",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "30d70a6adc6c"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "d0ccba21c650"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "O3-5694",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — migrate to the shared vitals extension. Its open [PR reference removed] to be closed; vitals handled here via the shared components."
+          }
+         ],
+         "attrs": {
+          "localId": "53aac6cc6ecc"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "c01512c03f24"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "O3-5695",
+           "marks": [
+            {
+             "type": "em"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — unify the encounter parsing. Its open [PR reference removed] to be closed; parsing is removed entirely when the shared components are adopted."
+          }
+         ],
+         "attrs": {
+          "localId": "b1dd394c2608"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "9f0506f752bc"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "A single PR delivers all of the above so the same files aren't touched three times."
+          }
+         ],
+         "attrs": {
+          "localId": "1b19712f870b"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "a004e1f183ba"
+     }
+    }
+   ]
+  },
+  "status": {
+   "name": "To Do"
+  },
+  "labels": [
+   "golden-v0"
+  ]
+ }
+}

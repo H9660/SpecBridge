@@ -36,7 +36,41 @@ specbridge/retrieval_eval.py      scores search against the answer key
 | [`code_index.py`](../specbridge/code_index.py) | 4a-4d | The code library. Builds one SQLite file next to the repos (files, pieces, links between files, keyword index, meaning vectors), rebuilt only when a repo's frozen commit changes. All search lives here. | `CodeIndex.build()` [L129](../specbridge/code_index.py#L129), `.search()` (whole files) [L316](../specbridge/code_index.py#L316), `.search_pieces()` (keywords) [L327](../specbridge/code_index.py#L327), `.build_vectors()` [L358](../specbridge/code_index.py#L358), `.search_vectors()` (meaning) [L386](../specbridge/code_index.py#L386), `.follow_links()` [L408](../specbridge/code_index.py#L408), `.rank_files()` (combined / hybrid) [L419](../specbridge/code_index.py#L419), `.search_code()` (for the AI) [L428](../specbridge/code_index.py#L428), `.neighbours()`, `rrf()` [L459](../specbridge/code_index.py#L459), `words()`, `query_terms()` |
 | [`embedder.py`](../specbridge/embedder.py) | 4c | Turns text into meaning vectors through local Ollama (`nomic-embed-text` by default, `EMBED_MODEL` to override), with the document / question prefixes nomic expects. | `load_embedder()`, `OllamaEmbedder.embed_documents()`, `.embed_query()` |
 | [`code_tools.py`](../specbridge/code_tools.py) | 4d | The tools the AI calls to read code, with their JSON schemas (`TOOLS`). Only files in the library can be read. | `CodeTools.call()`, `.search_code()`, `.read_file()`, `.grep()`, `.find_usages()` |
+| [`atlassian.py`](../specbridge/atlassian.py) | 2, node 1 | Small client for the team's Jira + Confluence: login check, read one issue (`get_issue`), issue types, Confluence space, search, create issue. Errors are `JiraError` with the HTTP status and never contain the credentials. Moved here from `scripts/` on 2026-11-07. | `Atlassian`, `.get_issue()`, `.search()`, `JiraError`, `missing_settings()` |
+| [`ticket_text.py`](../specbridge/ticket_text.py) | node 1 | Jira ticket to clean, safe text: rich text to plain text keeping headings, lists (one criterion per line), code blocks and tables; secrets to `<redacted-secret>` (only values that look like secrets, so "password field" stays); finds lines aimed at the AI. | `adf_to_text()`, `redact_secrets()`, `instruction_lines()`, `file_names()` |
 | [`retrieval_eval.py`](../specbridge/retrieval_eval.py) | 4a | Scores code search on the golden tickets: does each ticket's really-changed file come back near the top? Produces hit@k, recall@k and mrr, overall, per group and with / without file names in the ticket. | `golden_queries()` (ticket text + answer-key files) [L37](../specbridge/retrieval_eval.py#L37), `score()` [L59](../specbridge/retrieval_eval.py#L59), `summarise()` [L77](../specbridge/retrieval_eval.py#L77), `report_md()` |
+
+## `specbridge/agent/` - the LangGraph agent (built node by node, in the order of architecture.drawio)
+
+Node order: START (node 0), intake (1), understand (2), clarify (3), orchestrator (4), criterion_worker (5), e2e_worker (6), merge (7), reviewer (8), render (9), save_local (10), publish (11). Each node's file stays empty until its node is built, and its spec is approved first.
+
+| File | Node | What it does | Main parts |
+|---|---|---|---|
+| [`graph.py`](../specbridge/agent/graph.py) | 0 | The main graph (now START -> intake -> END) and START itself: checks the request (ticket reference, mode - `live` refused until publish exists - run id), loads settings, runs the brain check, creates the run, runs the graph with a SQLite checkpointer (resume after a pause, crash or Ctrl-C), writes the run record however the run ends. | `run_ticket()`, `build_graph()`, `RunResult`, `StartError` |
+| [`state.py`](../specbridge/agent/state.py) | 0 | `SpecBridgeState`: fields set by START and the nodes built so far; `trace` is appended and `spent` summed across nodes. | `SpecBridgeState`, `MODES`, `ENABLED_MODES`, `add_spent()` |
+| [`limits.py`](../specbridge/agent/limits.py) | 0 | Reads and checks `config/agent.json` (defaults if missing; clear error for broken JSON, wrong types, unknown names). | `load_settings()`, `Settings`, `SettingsError` |
+| [`preflight.py`](../specbridge/agent/preflight.py) | 0 | Brain check at START: the profile and key exist (offline); OpenRouter accepts the key, its spending limit is not used up, the model is offered (free calls, no question to the model). Low account credit is only a warning (BYOK calls still work). Never shows the key. | `check_brain()`, `PreflightError` |
+| [`run_record.py`](../specbridge/agent/run_record.py) | 0 | Writes `data/runs/<ticket>/<run_id>.json`: status, error, trace, timings, spending, brain, settings, frozen commits. No keys. | `write()`, `path_for()` |
+| [`nodes/intake.py`](../specbridge/agent/nodes/intake.py) | 1 | Reads the ticket reference (URL, board link or key), refuses anything outside `ATLASSIAN_SITE` / project `SPEC` before any call, fetches the ticket read-only (one retry), cleans it, redacts secrets, flags lines aimed at the AI. Out: `state["ticket"]`. | `make_node()`, `parse_ref()`, `fetch()`, `clean_issue()`, `IntakeError` |
+| `nodes/understand.py`, `clarify.py`, `orchestrator.py`, `merge.py`, `reviewer.py`, `render.py`, `save_local.py`, `publish.py` | 2-11 | Empty until their node is built. | - |
+| `worker/criterion_worker.py`, `e2e_worker.py`, `tools.py`, `evidence.py` | 5-6 | Empty until the worker nodes are built (subgraph, tool runner, evidence store and compaction). | - |
+| `code_source.py` | 5 | Empty: the code-reading interface around `code_tools.py` (ARCHITECTURE.md D5). | - |
+
+## `prompts/` - one prompt per AI node (D12)
+
+`understand.md`, `worker_agent.md`, `write_cases.md`, `e2e.md`, `merge_editor.md`, `reviewer.md`: empty until their node is built.
+
+## `tests/agent/` - tests for each agent node
+
+Run with `.venv/bin/python -m pytest tests/agent` (one test: `... tests/agent/test_start.py::test_good_run_creates_state_trace_and_record`). Tests marked `live` need keys in `.env` and are skipped without them.
+
+| File | Node | What it checks |
+|---|---|---|
+| [`conftest.py`](../tests/agent/conftest.py) | - | Shared fixtures: temp records folder, fake brain check, fake Jira (`FakeJira`, answers from the saved tickets), `start()` helper. |
+| [`test_intake.py`](../tests/agent/test_intake.py) | 1 | Accepted and refused references (no network call when refused), fetch errors and retry, every rich-text element, secrets redacted / normal text untouched, AI-aimed lines found / normal lines not, the saved real tickets, other flags, intake inside the graph, live: all 69 tickets and the fixtures still matching Jira. |
+| [`fixtures/jira/`](../tests/agent/fixtures/jira/) | 1 | 8 real SPEC tickets as Jira returns them (`SPEC-1.json`, `SPEC-6.json`, `SPEC-16.json`, `SPEC-55.json`, `SPEC-63.json`, `SPEC-65.json`, `SPEC-66.json`, `SPEC-69.json`), chosen to cover every rich-text element seen plus the secret, injection and Hinglish tickets. |
+| [`test_start.py`](../tests/agent/test_start.py) | 0 | Normal run, every refused request, settings checks, brain check refusals (key never shown), crash / Ctrl-C / pause and resume, duplicate run id, command line, live brain check. |
+| `test_understand.py`, `test_clarify.py`, `test_orchestrator.py`, `test_criterion_worker.py`, `test_e2e_worker.py`, `test_merge.py`, `test_reviewer.py`, `test_render.py`, `test_save_local.py`, `test_publish.py`, `test_graph.py`, `test_state.py` | 1-11 | Empty until their node is built. |
 
 ## `scripts/` - commands you run
 
@@ -45,11 +79,11 @@ specbridge/retrieval_eval.py      scores search against the answer key
 | [`build_ticket_shortlist.py`](../scripts/build_ticket_shortlist.py) | 1 | Finds O3 tickets fixed after the 31 March 2026 cutoff from the repos' git history, records the files each fix changed (the answer key), drops unusable tickets, tags the rest, and writes the frozen commits. | `py -3.12 scripts/build_ticket_shortlist.py` |
 | [`render_shortlist.py`](../scripts/render_shortlist.py) | 1 | Turns `picked_v0.json` into the readable `shortlist_v0.md`. | `py -3.12 scripts/render_shortlist.py` |
 | [`setup_workspace.py`](../scripts/setup_workspace.py) | 2 | Downloads the 5 repos and puts each on a `snapshot` branch at its frozen commit. Safe to re-run. | `py -3.12 scripts/setup_workspace.py --workdir C:/specbridge-work` |
-| [`atlassian.py`](../scripts/atlassian.py) | 2 | Small client for the team's Jira + Confluence (login check, issue types, Confluence space, search, create issue). | used by other scripts |
 | [`import_tickets.py`](../scripts/import_tickets.py) | 2 | Copies the 63 picked tickets into Jira project `SPEC`, removing anything that gives away the answer (PR links, links back to OpenMRS, attachments, mentions); flags tickets that name code files. Re-runs make no duplicates. | `py -3.12 scripts/import_tickets.py [--dry-run]` |
 | [`import_adversarial.py`](../scripts/import_adversarial.py) | 6 | Adds the 6 trick tickets from `adversarial_v0.json` to Jira (`adversarial-v0` label), as SPEC-64 to SPEC-69. Re-runs make no duplicates. | `py -3.12 scripts/import_adversarial.py [--dry-run]` |
 | [`eval_retrieval.py`](../scripts/eval_retrieval.py) | 4 | Builds the code library if needed and scores one search method (`keyword`, `pieces`, `combined`, `vector`, `hybrid`) on the golden tickets. `vector` / `hybrid` embed all pieces first (once). | `py -3.12 scripts/eval_retrieval.py --method hybrid` |
 | [`retrieval_details.py`](../scripts/retrieval_details.py) | 4 | Per-ticket evidence behind the scores: each ticket's changed files, their rank in combined and hybrid search, and the hybrid top 20. | `py -3.12 scripts/retrieval_details.py` |
+| [`run_ticket.py`](../scripts/run_ticket.py) | 7 (node 0) | Runs the agent on one ticket: prints the brain, run id, status and record path. Exit 0 done, 1 failed, 2 refused, 130 Ctrl-C. | `.venv/bin/python scripts/run_ticket.py SPEC-12 [--mode dry-run\|eval] [--run-id ID --resume] [--no-preflight]` |
 | [`check_repo_map.py`](../scripts/check_repo_map.py) | - | Lists project files that are missing from this repo map. | `py -3.12 scripts/check_repo_map.py` |
 | [`smoke_test_step1.py`](../scripts/smoke_test_step1.py) | 1 | Checks the test data: frozen commits, ticket answer keys, cutoff rules. | `py -3.12 scripts/smoke_test_step1.py --workdir C:/specbridge-work` |
 | [`smoke_test_step2.py`](../scripts/smoke_test_step2.py) | 2 | Checks the workspace: repos frozen and untouched, `.env` safe, ticket copier removes leaks, tickets copied into Jira. | `py -3.12 scripts/smoke_test_step2.py` |
@@ -63,6 +97,7 @@ specbridge/retrieval_eval.py      scores search against the answer key
 | [`repos.json`](../config/repos.json) | The 5 OpenMRS repos (name, GitHub URL, what each contains), the cutoff date and the source Jira project. |
 | [`brains.json`](../config/brains.json) | Brain profiles: `llm` (OpenRouter, default `google/gemini-3.8-flash`) and `slm` (local Ollama, model not chosen yet). |
 | [`embedder.json`](../config/embedder.json) | Embedding model settings: local Ollama, `nomic-embed-text`, piece size cap, batch size. |
+| [`agent.json`](../config/agent.json) | Agent limits: $0.25 cost cap, 2 rounds (first run + 1 retry), 10 min time cap, 12 tool calls per worker round, 20% reserve, max 5 workers, concurrency per brain. |
 
 ## `data/` - inputs and results
 
@@ -86,7 +121,9 @@ specbridge/retrieval_eval.py      scores search against the answer key
 |---|---|
 | [`README.md`](../README.md) | Setup: what you need, cloning the frozen repos, `.env`, smoke tests, brain switching. |
 | [`.env.example`](../.env.example) | Template for `.env` (Atlassian, OpenRouter key, brain, work folder). Copy to `.env`. |
-| [`.gitignore`](../.gitignore) | Keeps `.env`, caches and editor files out of git. |
+| [`.gitignore`](../.gitignore) | Keeps `.env`, caches, editor files and agent run records (`data/runs/`) out of git. |
+| [`requirements.txt`](../requirements.txt) | Exact versions of the allowed packages (`numpy`, `langgraph`, `langgraph-checkpoint-sqlite`, `pytest`). Install into `.venv` with `.venv/bin/python -m pip install -r requirements.txt`. |
+| [`CLAUDE.md`](../CLAUDE.md) | Guidance for Claude Code: working rules, commands, architecture overview. |
 | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Design of the agent that turns a ticket URL into a UAT page: a LangGraph `StateGraph` with an orchestrator and criterion-worker subagents; key decisions D1-D19, how context is divided, communication, subagent counts, state, planned files, scoring, security. |
 | [`docs/architecture.drawio`](architecture.drawio) | The same architecture as a draw.io diagram: main graph (orchestrator, parallel workers, merge, reviewer loop), one worker subgraph expanded, state, context layers, services, legend. Open in draw.io / diagrams.net. |
 | [`docs/SpecBridge_AI_PRD.tex`](SpecBridge_AI_PRD.tex) | The PRD as LaTeX (same content as the PDF). Standard packages only; compile with `pdflatex SpecBridge_AI_PRD.tex` (TeX Live, MiKTeX or Overleaf). |
@@ -108,5 +145,6 @@ specbridge/retrieval_eval.py      scores search against the answer key
 | Path | What it is |
 |---|---|
 | `.env` | Your secrets and settings. Git-ignored; never commit or share. |
+| `data/runs/<ticket>/<run_id>.json`, `data/runs/checkpoints.sqlite` | Agent run records and LangGraph checkpoints (git-ignored). |
 | `C:\specbridge-work\<repo>` | The 5 frozen repos (`setup_workspace.py`). |
 | `C:\specbridge-work\specbridge_index.sqlite` | The code library database (`eval_retrieval.py` builds it; about 40 MB with vectors). |

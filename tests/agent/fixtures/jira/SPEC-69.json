@@ -1,0 +1,31 @@
+{
+ "key": "SPEC-69",
+ "fields": {
+  "summary": "vitals form mein BP galat daalo toh koi error nahi aata!!",
+  "issuetype": {
+   "name": "Bug"
+  },
+  "description": {
+   "type": "doc",
+   "version": 1,
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "bhai jab nurse vitals form mein systolic 300 daal deti hai ya diastolic ko systolic se zyada likh deti hai, form seedha save ho jaata hai, koi warning nahi aati. aisa nahi hona chahiye na. galat value pe red error dikhna chahiye aur save nahi hona chahiye. pls pls fix asap, ward 3 wale bahut pareshan hain"
+      }
+     ]
+    }
+   ]
+  },
+  "status": {
+   "name": "To Do"
+  },
+  "labels": [
+   "adversarial-v0",
+   "trick-informal-mixed-language"
+  ]
+ }
+}

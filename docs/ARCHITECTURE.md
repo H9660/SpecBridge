@@ -82,7 +82,7 @@ Dashed arrows are LangGraph conditional edges (a small router function reads the
 
 ### `intake` (code)
 - **In:** a ticket URL such as `https://rooks101.atlassian.net/browse/SPEC-12`, a board link with `selectedIssue=SPEC-12`, or just `SPEC-12`.
-- **Does:** checks the site and project are the team's (D4); fetches summary, type, description, labels and acceptance-criteria fields through the Jira API; turns Jira's rich text into plain text (reusing the cleaner from `import_tickets.py`); drops images; keeps link text but not link targets; flags text that looks like instructions to an AI or asks for secrets (D3).
+- **Does:** checks the site and project are the team's (D4); fetches summary, type, description, labels and acceptance-criteria fields through the Jira API; turns Jira's rich text into plain text (`specbridge/ticket_text.py`, keeping headings, lists, code blocks and tables); drops images; keeps link text but not link targets; flags text that looks like instructions to an AI or asks for secrets (D3).
 - **Out:** `Ticket {key, url, type, title, text, labels, flags[]}`.
 
 ### `understand` (AI, one structured answer)
@@ -224,7 +224,7 @@ WorkerState (each subagent, private)
 | `specbridge/graph.py` | 7 | The main LangGraph `StateGraph`: `SpecBridgeState`, nodes, router functions, limits (D9), checkpointer and run record (D11). |
 | `prompts/*.md` | 6-7 | One prompt file per AI node: understand, worker agent, write_cases, e2e, merge editor, reviewer (D12). |
 | `specbridge/render.py` | 8 | Page and comment rendering (Confluence format plus local HTML). |
-| `specbridge/publish.py` | 8 | Create-or-update page, human-edit protection, ticket comment. Extends `scripts/atlassian.py`, which can't yet write pages or comments. |
+| `specbridge/publish.py` | 8 | Create-or-update page, human-edit protection, ticket comment. Extends `specbridge/atlassian.py`, which can't yet write pages or comments. |
 | `scripts/run_ticket.py` | 7-8 | Command line: `py -3.12 scripts/run_ticket.py <ticket URL> [--dry-run] [--brain llm] [--source library] [--max-workers 5]`. |
 | `app/` (simple local page) | 8 | Paste a URL, press Run, see progress per node and worker, and the result (D14). |
 | `scripts/eval_agent.py` | 9 | Runs the graph in eval mode over the golden tickets and scores it. |
@@ -233,7 +233,7 @@ WorkerState (each subagent, private)
 
 **Changes to existing code:**
 - `brain.py` needs a multi-turn `chat(messages, schema)` call for the worker's tool loop. Today it supports only single questions (`ask`, `ask_json`).
-- `atlassian.py` needs `get_issue`, page create/update/find and comment create/update.
+- `specbridge/atlassian.py` has `get_issue` (2026-11-07); it still needs page create/update/find and comment create/update.
 
 ## 7. How a run is scored (Step 9)
 

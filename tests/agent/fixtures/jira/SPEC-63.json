@@ -1,0 +1,507 @@
+{
+ "key": "SPEC-63",
+ "fields": {
+  "summary": "Prevent open redirect via unvalidated returnToUrl",
+  "issuetype": {
+   "name": "Story"
+  },
+  "description": {
+   "type": "doc",
+   "version": 1,
+   "content": [
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "cb589226203a"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Summary:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "A security vulnerability exists where the "
+      },
+      {
+       "type": "text",
+       "text": "returnToUrl",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " query parameter is not properly validated after login, allowing attackers to redirect authenticated users to external malicious sites."
+      }
+     ],
+     "attrs": {
+      "localId": "b8420c46682a"
+     }
+    },
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "7b264e763695"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Description:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "During the post-login process, the application reads the "
+      },
+      {
+       "type": "text",
+       "text": "returnToUrl",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " parameter and navigates the user to the specified location. The current validation only blocks the exact "
+      },
+      {
+       "type": "text",
+       "text": "'/'",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " value, meaning any other input—including full external URLs—is accepted. Since navigation uses "
+      },
+      {
+       "type": "text",
+       "text": "window.location.assign()",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " for absolute URLs, this results in unintended redirects to attacker-controlled domains."
+      }
+     ],
+     "attrs": {
+      "localId": "1350187249e3"
+     }
+    },
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "e8d5fbd99c2b"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Impact:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "ffd8b45993ec"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "abb6d4c38773"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Enables phishing attacks immediately after successful login"
+          }
+         ],
+         "attrs": {
+          "localId": "c0e9a29b0592"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "108c328dad10"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Exploitable without authentication"
+          }
+         ],
+         "attrs": {
+          "localId": "cd84ef2563b2"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "11dfd06269d1"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "High risk due to trusted post-login context"
+          }
+         ],
+         "attrs": {
+          "localId": "9b5a0ab77dbc"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0c7df8026f2b"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Potential compromise of sensitive patient or clinical data"
+          }
+         ],
+         "attrs": {
+          "localId": "4fe2f5693d2a"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "ea0af470f971"
+     }
+    },
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "cc51eece2032"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Expected Behavior:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "d18fa3353c1e"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "309ee5978df9"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Only internal, trusted routes should be allowed"
+          }
+         ],
+         "attrs": {
+          "localId": "80821d482527"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "ca613e7406f6"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "External or malformed URLs should be rejected"
+          }
+         ],
+         "attrs": {
+          "localId": "117db2c221f1"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "153bd7ffe118"
+     }
+    },
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "527b41fa3794"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Actual Behavior:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "f4beac01eca4"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "864ef74702b5"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Any URL is accepted and used for navigation"
+          }
+         ],
+         "attrs": {
+          "localId": "9f29aac24579"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "4534c553b087"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Users can be redirected to external sites after login"
+          }
+         ],
+         "attrs": {
+          "localId": "5879e74627cc"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "7282eac04388"
+     }
+    },
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "d29c7ad2e79d"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Root Cause:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      },
+      {
+       "type": "hardBreak"
+      },
+      {
+       "type": "text",
+       "text": "returnToUrl",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " is retrieved from query parameters and passed directly to navigation without validation. The navigation mechanism allows absolute URLs, enabling external redirects."
+      }
+     ],
+     "attrs": {
+      "localId": "9ae42f6805fb"
+     }
+    },
+    {
+     "type": "rule",
+     "attrs": {
+      "localId": "5e41215b2b77"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Affected Files:",
+       "marks": [
+        {
+         "type": "strong"
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "4fd2b77e47c5"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "794fb01f9871"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "location-picker-view.component.tsx",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "0f77e8516d27"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "27c936b05206"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "location-picker.test.tsx",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "85fa854b53ef"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "f4cd85205834"
+     }
+    }
+   ]
+  },
+  "status": {
+   "name": "To Do"
+  },
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ]
+ }
+}

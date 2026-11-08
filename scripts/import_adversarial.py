@@ -11,8 +11,9 @@ import json
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from atlassian import Atlassian, load_env, missing_settings  # noqa: E402
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from specbridge.atlassian import Atlassian, missing_settings  # noqa: E402
+from specbridge.env import load_env  # noqa: E402
 
 PROJECT = pathlib.Path(__file__).resolve().parent.parent
 GOLDEN = PROJECT / "data" / "golden"

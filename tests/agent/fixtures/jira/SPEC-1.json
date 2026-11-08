@@ -1,0 +1,1513 @@
+{
+ "key": "SPEC-1",
+ "fields": {
+  "summary": "Patient search results unmount and remount on every keystroke, causing multi-second UI stalls and heap growth",
+  "issuetype": {
+   "name": "Bug"
+  },
+  "description": {
+   "type": "doc",
+   "version": 1,
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 2,
+      "localId": "97c4eb041c54"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Symptom"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "In the patient search (both the compact dropdown and the advanced search page), every keystroke that changes the query causes the entire rendered banner list to unmount and remount. With ~50 accumulated patient banners (e.g. five auto-paginated pages of ten), this:"
+      }
+     ],
+     "attrs": {
+      "localId": "d037d4394264"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "f53b8ee7600e"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "triggers ~150 simultaneous backend requests (per-banner "
+          },
+          {
+           "type": "text",
+           "text": "/obs",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " photo lookup, "
+          },
+          {
+           "type": "text",
+           "text": "/visit",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", "
+          },
+          {
+           "type": "text",
+           "text": "/person",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ") within a few ms"
+          }
+         ],
+         "attrs": {
+          "localId": "ed0d5a72d198"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "1c0b5e1fd197"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "blocks the JS main thread long enough that the next keystroke event sits in the event queue for multiple seconds before dispatching"
+          }
+         ],
+         "attrs": {
+          "localId": "184fe8c82de2"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "2121c96a4e36"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "accumulates promise-reaction / SWR-subscriber state in the heap that does not appear to be released"
+          }
+         ],
+         "attrs": {
+          "localId": "4eca657f8a7c"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "b1d3e7928ec1"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "In one captured session, a single keypress took 3.7 s to register as a network request, and three Firefox heap snapshots taken seconds apart showed "
+      },
+      {
+       "type": "text",
+       "text": "mCallback",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " edges growing 75k → 153k → 458k."
+      }
+     ],
+     "attrs": {
+      "localId": "d88e7b577099"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 2,
+      "localId": "44db5624c7d4"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Reproduce"
+      }
+     ]
+    },
+    {
+     "type": "orderedList",
+     "attrs": {
+      "order": 1,
+      "localId": "126892da93a4"
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "2ff1a82e353f"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Open the patient search workspace (compact dropdown is enough)."
+          }
+         ],
+         "attrs": {
+          "localId": "0d421529243e"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "1d9f45637f92"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Type a query that returns many results, e.g. "
+          },
+          {
+           "type": "text",
+           "text": "10",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "."
+          }
+         ],
+         "attrs": {
+          "localId": "fa68e79a9f93"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "cee92f5a98e7"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Scroll the results so the IntersectionObserver auto-paginates a few times (accumulate ~50 banners)."
+          }
+         ],
+         "attrs": {
+          "localId": "831bc0c7271a"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "2e786e83e234"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Type one more character and watch DevTools Network + Performance:"
+          }
+         ],
+         "attrs": {
+          "localId": "774d927ce930"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "   - 100+ simultaneous "
+      },
+      {
+       "type": "text",
+       "text": "/obs?patient=…&concept=…",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " and "
+      },
+      {
+       "type": "text",
+       "text": "/visit?patient=…",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " requests fire."
+      }
+     ],
+     "attrs": {
+      "localId": "6443800b35a6"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "   - The new "
+      },
+      {
+       "type": "text",
+       "text": "/patient?q=…",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " request is delayed by 1–5 s after the keypress."
+      }
+     ],
+     "attrs": {
+      "localId": "e8bd0dbbd2db"
+     }
+    },
+    {
+     "type": "orderedList",
+     "attrs": {
+      "order": 1,
+      "localId": "770a9d61d13b"
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "8dadda092029"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Repeat several times and take Memory snapshots; retained heap grows monotonically."
+          }
+         ],
+         "attrs": {
+          "localId": "8c2e75a88e42"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 2,
+      "localId": "f52e723884ce"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Root cause"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "useInfinitePatientSearch",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " ("
+      },
+      {
+       "type": "text",
+       "text": "@openmrs/esm-patient-search-app/src/patient-search.resource.tsx:83",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ") calls "
+      },
+      {
+       "type": "text",
+       "text": "useSWRInfinite",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " without "
+      },
+      {
+       "type": "text",
+       "text": "keepPreviousData",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ". When "
+      },
+      {
+       "type": "text",
+       "text": "searchQuery",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " changes:"
+      }
+     ],
+     "attrs": {
+      "localId": "ce32547f3dc2"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "a306e2a38ab7"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "getUrl",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " returns URLs for the new query → SWR sees a new key sequence."
+          }
+         ],
+         "attrs": {
+          "localId": "b4fcff52b463"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0d02579dd069"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "data",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " resets to "
+          },
+          {
+           "type": "text",
+           "text": "undefined",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", "
+          },
+          {
+           "type": "text",
+           "text": "isLoading",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " becomes "
+          },
+          {
+           "type": "text",
+           "text": "true",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "."
+          }
+         ],
+         "attrs": {
+          "localId": "6a8687d7eb82"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "776189df87e5"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Both view components gate on "
+      },
+      {
+       "type": "text",
+       "text": "isLoading",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " and return a skeleton/loader, throwing away the entire results subtree:"
+      }
+     ],
+     "attrs": {
+      "localId": "778aeda69625"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "552c38de964f"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "compact-patient-search/patient-search.component.tsx:52",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → "
+          },
+          {
+           "type": "text",
+           "text": "<Loader />",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "939690e315d9"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "29da6a3c666f"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "patient-search-page/patient-search-lg.component.tsx:41",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → "
+          },
+          {
+           "type": "text",
+           "text": "<LoadingState />",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "a8629edd8d66"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "afc5f3bf2f2c"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Every accumulated "
+      },
+      {
+       "type": "text",
+       "text": "<PatientBanner key={patient.uuid}>",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " unmounts, then remounts when the response arrives. Per remounted banner the fan-out is:"
+      }
+     ],
+     "attrs": {
+      "localId": "266ff95deb0d"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "933b018bf340"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "PatientPhoto",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → "
+          },
+          {
+           "type": "text",
+           "text": "usePatientPhoto",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → "
+          },
+          {
+           "type": "text",
+           "text": "/obs?patient=…&concept=<photoConceptUuid>&v=full",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "94d9fd8c957d"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "2ca22cd09e6f"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "useVisit(patientUuid)",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " called directly in "
+          },
+          {
+           "type": "text",
+           "text": "PatientBanner",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " ("
+          },
+          {
+           "type": "text",
+           "text": "patient-banner.component.tsx:41",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ")"
+          }
+         ],
+         "attrs": {
+          "localId": "0a8534896d34"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "ac2040df4e4a"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "VisitTag",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " extension from "
+          },
+          {
+           "type": "text",
+           "text": "esm-patient-banner-app",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → another "
+          },
+          {
+           "type": "text",
+           "text": "useVisit(patientUuid)",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "dc3b72faaa24"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "ce379fabcf85"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "start-visit-button slot → potentially another "
+          },
+          {
+           "type": "text",
+           "text": "useVisit",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "e811d2c7c1a5"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0a95240997da"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "/person/<uuid>",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " lookups for contact-details / deceased state"
+          }
+         ],
+         "attrs": {
+          "localId": "23437af18b3c"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "76bc9cf3526c"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Compounding factor: "
+      },
+      {
+       "type": "text",
+       "text": "useSWRInfinite",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": "'s "
+      },
+      {
+       "type": "text",
+       "text": "size",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " is not reset on key change. After auto-paginating to "
+      },
+      {
+       "type": "text",
+       "text": "size=5",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ", every subsequent keystroke immediately fires five pages of the new query in parallel. Tracked separately in O3-5715."
+      }
+     ],
+     "attrs": {
+      "localId": "f2827c65bd6a"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 2,
+      "localId": "5ce720e817d9"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Proposed fix"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Two changes, applied together:"
+      }
+     ],
+     "attrs": {
+      "localId": "829ea81cc050"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 3,
+      "localId": "b73da87cb9c5"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "1. Keep previous data during query-change fetches"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Add "
+      },
+      {
+       "type": "text",
+       "text": "keepPreviousData: true",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " to the "
+      },
+      {
+       "type": "text",
+       "text": "useSWRInfinite",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " call in "
+      },
+      {
+       "type": "text",
+       "text": "useInfinitePatientSearch",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ":"
+      }
+     ],
+     "attrs": {
+      "localId": "b0c5daa95e9b"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "    "
+      }
+     ],
+     "attrs": {
+      "localId": "ae7bfc8ab547"
+     }
+    },
+    {
+     "type": "codeBlock",
+     "attrs": {
+      "language": "typescript",
+      "localId": "96ff12b5ac6a"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "const { data, isLoading, isValidating, setSize, error, size } = useSWRInfinite(\n  shouldFetch ? getUrl : null,\n  openmrsFetch,\n  { keepPreviousData: true },\n);"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "This keeps the banner list mounted across query changes. With stable "
+      },
+      {
+       "type": "text",
+       "text": "key={patient.uuid}",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ", React reuses banners for patients still in the new results, so no remount → no fan-out → no main-thread stall. "
+      },
+      {
+       "type": "text",
+       "text": "isLoading",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " then stays false on subsequent searches (only true on the very first load), and the loader gates in the view components don't tear down the subtree. "
+      },
+      {
+       "type": "text",
+       "text": "isValidating",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " can drive a non-disruptive loading hint if one is desired."
+      }
+     ],
+     "attrs": {
+      "localId": "d21864d2406e"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 3,
+      "localId": "a9744b20d1d5"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "2. Harden the loader gates"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Change both view components' loader gates so they only swap in the full skeleton when there is genuinely nothing to show:"
+      }
+     ],
+     "attrs": {
+      "localId": "9b10b4f85d46"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "f6d133c5f744"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "compact-patient-search/patient-search.component.tsx:52",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — "
+          },
+          {
+           "type": "text",
+           "text": "if (isLoading)",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → "
+          },
+          {
+           "type": "text",
+           "text": "if (isLoading && !searchResults?.length)",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "85bcb385f846"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "81be72153a3a"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "patient-search-page/patient-search-lg.component.tsx:41",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " — "
+          },
+          {
+           "type": "text",
+           "text": "if (isLoading)",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " → "
+          },
+          {
+           "type": "text",
+           "text": "if (isLoading && !results?.length)",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          }
+         ],
+         "attrs": {
+          "localId": "5b325faa153d"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "a797cec0375c"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "The "
+      },
+      {
+       "type": "text",
+       "text": "keepPreviousData",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " change above already keeps "
+      },
+      {
+       "type": "text",
+       "text": "isLoading",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " false during query-change fetches, but tightening the gate makes the intent explicit (\"only show the full skeleton when we have nothing to show\") and removes any reliance on SWR's "
+      },
+      {
+       "type": "text",
+       "text": "isLoading",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " semantics holding across versions."
+      }
+     ],
+     "attrs": {
+      "localId": "721619fbdb0c"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Leave the existing next-page indicator (the small "
+      },
+      {
+       "type": "text",
+       "text": "<Loading withOverlay={false} small />",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " at "
+      },
+      {
+       "type": "text",
+       "text": "patient-search.component.tsx:94-96",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ") untouched — it fires off "
+      },
+      {
+       "type": "text",
+       "text": "hasMore",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " / "
+      },
+      {
+       "type": "text",
+       "text": "isValidating",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ", not "
+      },
+      {
+       "type": "text",
+       "text": "isLoading",
+       "marks": [
+        {
+         "type": "code"
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": ", and is the right indicator for auto-pagination."
+      }
+     ],
+     "attrs": {
+      "localId": "93f9b8545461"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 2,
+      "localId": "ff8a915f9ca5"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Evidence"
+      }
+     ]
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "3a64e571444d"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "HAR file from 2026-05-28T10:19:28 – 10:23:22 showing 24 patient searches with response-end → first-side-effect-request gaps ranging 20 ms (idle UI) to 5.7 s (stalled UI), with the burst always firing the moment the thread frees."
+          }
+         ],
+         "attrs": {
+          "localId": "de1fad3d960f"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "6a729f68fcf4"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Three Firefox heap snapshots taken seconds apart showing 141 MB → 161 MB → 181 MB retained, with "
+          },
+          {
+           "type": "text",
+           "text": "mCallback",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", "
+          },
+          {
+           "type": "text",
+           "text": "mCreationStack",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", "
+          },
+          {
+           "type": "text",
+           "text": "mIncumbentJSGlobal",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " edge counts roughly doubling per snapshot."
+          }
+         ],
+         "attrs": {
+          "localId": "db9f1881470a"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "828fca3f12d0"
+     }
+    }
+   ]
+  },
+  "status": {
+   "name": "To Do"
+  },
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ]
+ }
+}

@@ -1,0 +1,1060 @@
+{
+ "key": "SPEC-16",
+ "fields": {
+  "summary": "Add a schema-configurable searchable dropdown backed by a live REST endpoint",
+  "issuetype": {
+   "name": "Story"
+  },
+  "description": {
+   "type": "doc",
+   "version": 1,
+   "content": [
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 1,
+      "localId": "77a13f6e0865"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "The problem"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "A nurse fills in an insurance claim form on behalf of the treating doctor. The claim has to identify the clinician, and the list of eligible clinicians lives in an insurer-maintained directory that changes continuously — people join, leave, and lose accreditation."
+      }
+     ],
+     "attrs": {
+      "localId": "51c1820c475d"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Today our forms can't do this well:"
+      }
+     ],
+     "attrs": {
+      "localId": "27e4d1667db8"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "fa3fd548bc32"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Static dropdown choices are fixed when the form is built, so they go stale"
+          }
+         ],
+         "attrs": {
+          "localId": "efce2b25080a"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "11593692719a"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Remote choices already exist (remote-select), but each list source must be registered in application code, so connecting a form to a new live list needs a developer and a software release"
+          }
+         ],
+         "attrs": {
+          "localId": "dd1813beee7f"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "f38e06912252"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The first attempt ([PR reference removed], superseded) downloaded the whole list in one request — big lists get cut off, there's no real search, and reopened forms show a code instead of a name. [PR reference removed] is the active implementation."
+          }
+         ],
+         "attrs": {
+          "localId": "75f5db1aa03a"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "2f575144d9c3"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 1,
+      "localId": "a62a137181e8"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "What we'd build"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "A built-in data source that a form schema can point at a REST endpoint, so form builders can back any dropdown with a live list without engine or host-app code changes."
+      }
+     ],
+     "attrs": {
+      "localId": "db872a42bae3"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 1,
+      "localId": "7f77f610831f"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Acceptance criteria"
+      }
+     ]
+    },
+    {
+     "type": "orderedList",
+     "attrs": {
+      "order": 1,
+      "localId": "7992d472780c"
+     },
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "a4a7d56af5cf"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Typing sends the entered term through the configured search parameter and displays matching results."
+          }
+         ],
+         "attrs": {
+          "localId": "4469abe89dbb"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "2bc870723685"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Each result displays its "
+          },
+          {
+           "type": "text",
+           "text": "labelKey",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " value; selecting it returns the "
+          },
+          {
+           "type": "text",
+           "text": "valueKey",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " value to the existing form control and adapter (an obs question stores it as the obs value, exactly as any select does today)."
+          }
+         ],
+         "attrs": {
+          "localId": "8f6e992d3889"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0efe474d1b17"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The initial (empty-term) load requests a bounded page ("
+          },
+          {
+           "type": "text",
+           "text": "limit",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", default 20, overridable) — never the full collection."
+          }
+         ],
+         "attrs": {
+          "localId": "d41978c61472"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0262fc1e4c7d"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Reopening a saved form resolves the stored value and displays its label."
+          }
+         ],
+         "attrs": {
+          "localId": "11f4c54b6e3e"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "a8724f0b2cdb"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The field works correctly inside existing repeating groups, with independent search and edit-mode resolution for every row. (Repetition itself is the existing repeating mechanism, not this feature.)"
+          }
+         ],
+         "attrs": {
+          "localId": "916aec60976b"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "1ed54c71755e"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Search and resolution failures produce a visible, accessible error state distinguishable from \"no matches.\" Note: today's remote-select collapses errors into an empty list for every data source, so this is a shared-behavior enhancement in the control as well as a data-source requirement — see the implementation contract."
+          }
+         ],
+         "attrs": {
+          "localId": "3dcd1413f3f1"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "8209c3cb1b52"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Existing forms and registered data sources behave unchanged, and the library gains no new required provider for consumers ("
+          },
+          {
+           "type": "text",
+           "text": "HttpClient",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " must remain optional — consumers that don't provide it keep working, minus this data source)."
+          }
+         ],
+         "attrs": {
+          "localId": "cca05340496b"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "6ab9d3f675b0"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Focused tests cover option mapping ("
+          },
+          {
+           "type": "text",
+           "text": "results",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "-wrapped and bare-array responses), search parameter construction, saved-value resolution, search and resolution failures versus successful empty results (including the visible error state), and the registration/compatibility guarantees in criterion 7."
+          }
+         ],
+         "attrs": {
+          "localId": "cd6c7304c55e"
+         }
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 1,
+      "localId": "ec97ecc1c8ce"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Implementation contract"
+      }
+     ]
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "e3006a3016cf"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Configuration uses the standard "
+          },
+          {
+           "type": "text",
+           "text": "questionOptions.datasource: { name, config }",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " schema key and renders through the existing "
+          },
+          {
+           "type": "text",
+           "text": "remote-select",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " control. A parallel rendering type or schema key does not satisfy this ticket."
+          }
+         ],
+         "attrs": {
+          "localId": "30dd25a0cf7f"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "e9cb252f5365"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The engine registers the data source itself (working name "
+          },
+          {
+           "type": "text",
+           "text": "endpoint",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ") in the shared "
+          },
+          {
+           "type": "text",
+           "text": "DataSources",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " registry via optional injection, and only when that name is not already registered. A host-provided implementation therefore takes precedence regardless of initialization order: if the host registered first, the engine defers (the guard); if the host registers later, the registry's existing last-registration-wins overwrite applies. Both directions are test-pinned."
+          }
+         ],
+         "attrs": {
+          "localId": "e1e291be2685"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "06679cca0a13"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Config keys: "
+          },
+          {
+           "type": "text",
+           "text": "endpointUrl",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (required), "
+          },
+          {
+           "type": "text",
+           "text": "labelKey",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (default "
+          },
+          {
+           "type": "text",
+           "text": "display",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "), "
+          },
+          {
+           "type": "text",
+           "text": "valueKey",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (default "
+          },
+          {
+           "type": "text",
+           "text": "uuid",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "), "
+          },
+          {
+           "type": "text",
+           "text": "searchParam",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (default "
+          },
+          {
+           "type": "text",
+           "text": "q",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "), "
+          },
+          {
+           "type": "text",
+           "text": "resultsKey",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (default "
+          },
+          {
+           "type": "text",
+           "text": "results",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "), "
+          },
+          {
+           "type": "text",
+           "text": "limit",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (default "
+          },
+          {
+           "type": "text",
+           "text": "20",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "), "
+          },
+          {
+           "type": "text",
+           "text": "limitParam",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " (default "
+          },
+          {
+           "type": "text",
+           "text": "limit",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ")."
+          }
+         ],
+         "attrs": {
+          "localId": "7878a016688e"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "ca54872b201c"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Saved-value resolution convention: "
+          },
+          {
+           "type": "text",
+           "text": "GET {endpointUrl}/{urlEncodedValue}",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": ", overridable via an optional "
+          },
+          {
+           "type": "text",
+           "text": "resolveUrlTemplate",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " config with a "
+          },
+          {
+           "type": "text",
+           "text": "{value}",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " placeholder."
+          }
+         ],
+         "attrs": {
+          "localId": "fd9187fcc00d"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "17cca5865394"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The endpoint data source must not convert request failures into an empty successful result; failures propagate to the control. Remote-select distinguishes a request failure from a successful empty response and exposes an accessible error message."
+          }
+         ],
+         "attrs": {
+          "localId": "ba2df8771491"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "ef5d3011b08d"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Supported endpoints are browser-accessible HTTP GET endpoints returning JSON (a "
+          },
+          {
+           "type": "text",
+           "text": "results",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "-wrapped or bare array). Custom authentication is out of scope: same-origin endpoints may use the existing session; cross-origin endpoints must already be browser-accessible with suitable CORS configuration. Relative URLs are the portability norm (to be documented). GraphQL and POST search are out of scope."
+          }
+         ],
+         "attrs": {
+          "localId": "be7307c96995"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "16dd84fd68ab"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 1,
+      "localId": "0d509f0cf0d3"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Where the selection is stored — answered"
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "The earlier open questions to the implementing team have been resolved, and the "
+      },
+      {
+       "type": "text",
+       "text": "DHA HIE docs",
+       "marks": [
+        {
+         "type": "link",
+         "attrs": {
+          "href": "https://hie-docs.dha.go.ke/docs/claims/guides/adding-claim-doctor"
+         }
+        }
+       ]
+      },
+      {
+       "type": "text",
+       "text": " corrected two premises:"
+      }
+     ],
+     "attrs": {
+      "localId": "c1b80112981d"
+     }
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "38d370ddf2f2"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "All selectable clinicians exist as OpenMRS providers; the form stores the provider UUID."
+          }
+         ],
+         "attrs": {
+          "localId": "15e09c26a8e7"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "c965edcc3df9"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Regulator details (licence number, licensing body) live as provider attributes synced from the registry; the claim resolves them at build time — a standard claim identifies exactly one doctor by "
+          },
+          {
+           "type": "text",
+           "text": "practitioner_identification_number",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": " + "
+          },
+          {
+           "type": "text",
+           "text": "practitioner_regulation_body",
+           "marks": [
+            {
+             "type": "code"
+            }
+           ]
+          },
+          {
+           "type": "text",
+           "text": "."
+          }
+         ],
+         "attrs": {
+          "localId": "5f364733c6fc"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "3bfeba4337d1"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Doctor approval exists only for emergency (ECCIF) claims and is run by the HIE via OTP; standard claims have no approval step."
+          }
+         ],
+         "attrs": {
+          "localId": "91911da5e179"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "f5d1b592c41c"
+     }
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "None of that changes this ticket's mechanism — it's recorded so the claims form design consuming this feature doesn't re-open it."
+      }
+     ],
+     "attrs": {
+      "localId": "3bb20564c104"
+     }
+    },
+    {
+     "type": "heading",
+     "attrs": {
+      "level": 1,
+      "localId": "80b9f54eb81b"
+     },
+     "content": [
+      {
+       "type": "text",
+       "text": "Not in scope"
+      }
+     ]
+    },
+    {
+     "type": "bulletList",
+     "content": [
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "0065553327bb"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The encounter-provider enhancements (multiple providers, configurable roles) — separate ticket; this feature is its search mechanism"
+          }
+         ],
+         "attrs": {
+          "localId": "30879c719f5a"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "a8fa749d8c07"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The eligible-providers endpoint and licence re-validation at claim build — claims module"
+          }
+         ],
+         "attrs": {
+          "localId": "8a72661bb1b7"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "22509b1b7bd1"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "Claim generation or submission"
+          }
+         ],
+         "attrs": {
+          "localId": "954b5462662b"
+         }
+        }
+       ]
+      },
+      {
+       "type": "listItem",
+       "attrs": {
+        "localId": "f5670b7919f6"
+       },
+       "content": [
+        {
+         "type": "paragraph",
+         "content": [
+          {
+           "type": "text",
+           "text": "The React form engine equivalent"
+          }
+         ],
+         "attrs": {
+          "localId": "c0b3e09fa84f"
+         }
+        }
+       ]
+      }
+     ],
+     "attrs": {
+      "localId": "f73db0b9dd36"
+     }
+    }
+   ]
+  },
+  "status": {
+   "name": "To Do"
+  },
+  "labels": [
+   "golden-v0"
+  ]
+ }
+}
