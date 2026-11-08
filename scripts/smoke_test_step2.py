@@ -14,7 +14,9 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from atlassian import REQUIRED, Atlassian, load_env, missing_settings  # noqa: E402
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+from specbridge.atlassian import REQUIRED, Atlassian, missing_settings  # noqa: E402
+from specbridge.env import load_env  # noqa: E402
 import import_tickets  # noqa: E402
 
 PROJECT = pathlib.Path(__file__).resolve().parent.parent
@@ -78,7 +80,9 @@ def main():
 
     # 4. Git hygiene in the project folder
     nested = [str(p.parent.relative_to(PROJECT)) for p in PROJECT.rglob(".git") if p.parent != PROJECT]
-    size_mb = sum(f.stat().st_size for f in PROJECT.rglob("*") if f.is_file() and ".git" not in f.parts) / 1e6
+    # only files git would track: the git-ignored .venv and data/runs are expected to be large
+    tracked = git(PROJECT, "ls-files", "--cached", "--others", "--exclude-standard", "-z").stdout.split("\0")
+    size_mb = sum((PROJECT / f).stat().st_size for f in tracked if f and (PROJECT / f).is_file()) / 1e6
     check("No downloaded repos inside the (OneDrive) project folder", not nested and size_mb < 5,
           f"{size_mb:.1f} MB of project files; nested repos: {nested or 'none'}")
     check("Secrets file (.env) is git-ignored", git(PROJECT, "check-ignore", "-q", ".env").returncode == 0, ".gitignore")

@@ -11,3 +11,6 @@ __pycache__/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Agent run records and checkpoints (ticket text, code snippets)
+data/runs/

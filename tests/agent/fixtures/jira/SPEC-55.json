@@ -1,0 +1,45 @@
+{
+ "key": "SPEC-55",
+ "fields": {
+  "summary": "Printing encounters based on O3-forms",
+  "issuetype": {
+   "name": "Story"
+  },
+  "description": {
+   "type": "doc",
+   "version": 1,
+   "content": [
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "The goal of this ticket is to add possibility printing of encounter forms that are based on O3-forms (JSON schemas)."
+      }
+     ]
+    },
+    {
+     "type": "paragraph",
+     "content": [
+      {
+       "type": "text",
+       "text": "Talk thread about it - "
+      },
+      {
+       "type": "inlineCard",
+       "attrs": {
+        "url": "https://talk.openmrs.org/t/generic-o3-forms-printing-in-openmrs/48271"
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "status": {
+   "name": "To Do"
+  },
+  "labels": [
+   "golden-v0"
+  ]
+ }
+}
