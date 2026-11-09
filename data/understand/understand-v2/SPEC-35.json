@@ -1,0 +1,91 @@
+{
+ "ticket": {
+  "key": "SPEC-35",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-35",
+  "type": "Story",
+  "status": "To Do",
+  "title": "UI doesn't make it clear bill must be finalized before payment",
+  "text": "UI doesn't make it clear bill must be finalized before payment\n\nOn the Billing screen, the \"Process payment\" button is disabled until the bill is finalized via the \"Finalize bill\" action. There is currently no visible indication of this dependency, so cashiers attempt to process payment first and get stuck without understanding why.\n\nThis was discussed during the coffee break.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Provide a clear visible indication on the billing screen that a bill must be finalized before payment can be processed.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "A visible indication explains that the 'Process payment' button requires the bill to be finalized first.",
+    "source": "inferred",
+    "quote": "",
+    "status": "unclear"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Billing screen",
+    "role": "changed",
+    "status": "existing",
+    "matches": "",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/billing-dashboard/billing-dashboard.component.tsx"
+    ]
+   },
+   {
+    "name": "Process payment",
+    "role": "used",
+    "status": "existing",
+    "matches": "",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/invoice/payments/payments.component.tsx",
+     "billing-app/src/billing.resource.ts"
+    ]
+   },
+   {
+    "name": "Finalize bill",
+    "role": "used",
+    "status": "existing",
+    "matches": "",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/components/order-price-details.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "cashier"
+  ],
+  "questions": [
+   "How should the dependency be displayed to the user (e.g., a tooltip on the disabled 'Process payment' button, inline helper text, or an alert banner)?",
+   "What exact text or copy should be displayed to explain that the bill must be finalized?"
+  ],
+  "risks": [
+   {
+    "kind": "vague",
+    "detail": "The ticket only describes a usability issue discussed offline and does not specify the expected UI solution, design, or acceptance criteria."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Billing and payment processing are standard features in OpenMRS billing-app workflows.",
+  "testable": false,
+  "reason": "no checkable acceptance criteria could be found or inferred",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v2 (2026-11-09)",
+   "input_tokens": 2254,
+   "output_tokens": 2070,
+   "cost_usd": 0.009453,
+   "cost_estimated": true,
+   "seconds": 127.86,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done",
+   "screens_shown": 16
+  }
+ }
+}

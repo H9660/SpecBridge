@@ -11,6 +11,7 @@ Read these before changing anything substantial:
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the agent design and decisions D1–D19, drawn in [docs/architecture.drawio](docs/architecture.drawio).
 - [docs/USER_CLARIFICATIONS.md](docs/USER_CLARIFICATIONS.md): decisions the user made, plus open questions.
 - [docs/repo_map.md](docs/repo_map.md): what every file does.
+- [docs/adr/](docs/adr/README.md): decisions from D20 on, one file each (D1-D19 are in ARCHITECTURE.md). Add an ADR when a decision changes how the agent works.
 
 ## Working rules for this repo
 

@@ -7,7 +7,7 @@ from specbridge.agent.nodes import understand as u
 from specbridge.agent.nodes.understand import SCHEMA, UnderstandError, decide, finish, make_node
 from specbridge.brain import BrainError, schema_errors
 from specbridge.env import PROJECT, load_env
-from tests.agent.conftest import FAKE_KEY, FakeBrain, fake_intake, fake_understand, plain_answer
+from tests.agent.conftest import FAKE_KEY, KNOWN_SCREENS, FakeBrain, fake_intake, fake_understand, plain_answer
 
 TICKET = {"key": "SPEC-7", "type": "Story", "title": "Sort allergies", "labels": ["ui"], "flags": [],
           "text": "Sort allergies\n\nAcceptance criteria:\n1. Allergies are listed by severity: severe first.\n"
@@ -20,9 +20,9 @@ def ticket(**changes):
     return {**TICKET, **changes}
 
 
-def run(answer=None, t=TICKET, lookup=FOUND, brain=None):
+def run(answer=None, t=TICKET, lookup=FOUND, brain=None, catalogue=lambda text: KNOWN_SCREENS):
     brain = brain or FakeBrain(answer if answer is not None else plain_answer())
-    out = make_node(brain=brain, env={}, lookup=lookup)({"ticket": t}, None)
+    out = make_node(brain=brain, env={}, lookup=lookup, catalogue=catalogue)({"ticket": t}, None)
     return out["understanding"], out, brain
 
 
@@ -170,9 +170,61 @@ def test_risks_are_not_repeated():
 
 # --- screens ----------------------------------------------------------------------------------------
 
+def scr(name, role="changed", status="existing", matches=""):
+    return {"name": name, "role": role, "status": status, "matches": matches}
+
+
+def test_registered_screens_are_shown_to_the_ai():
+    _, _, brain = run(catalogue=lambda text: KNOWN_SCREENS if "allergies" in text.lower() else [])
+    prompt = brain.calls[0]["prompt"]
+    assert "Screens registered in the code" in prompt and "ground truth" in prompt
+    assert "- [patient-chart] widget allergies-details-widget in patient-chart-allergies-dashboard-slot" in prompt
+    assert prompt.index("Screens registered") < prompt.index("<ticket>")
+
+
+def test_no_registered_screens_says_so():
+    und, _, brain = run(catalogue=lambda text: [])
+    assert "- none found" in brain.calls[0]["prompt"] and und["meta"]["screens_shown"] == 0
+
+
+def test_new_screen_missing_from_the_code_is_expected():
+    und, _, _ = run(plain_answer(screens=[scr("Request Refund button", status="new"), scr("Bills page", "used")]),
+                    lookup=lambda n: [] if "Refund" in n else [("billing-app", "bills.tsx")])
+    assert und["testable"] and "unknown-screen" not in kinds(und)
+    assert und["screens"][0]["found_in_code"] is False and und["screens"][0]["status"] == "new"
+
+
+def test_matching_a_registered_screen_counts_as_found():
+    und, _, _ = run(plain_answer(screens=[scr("Allergies list", matches="allergies-details-widget")]), lookup=MISSING)
+    s = und["screens"][0]
+    assert s["found_in_code"] is True and s["matches"] == "allergies-details-widget" and und["testable"]
+    assert s["where"] == ["registered: allergies-details-widget"]
+
+
+def test_a_made_up_match_is_ignored():
+    und, _, _ = run(plain_answer(screens=[scr("Dental Chart tab", matches="dental-chart-widget")]), lookup=MISSING)
+    assert und["screens"][0]["found_in_code"] is False and und["screens"][0]["matches"] == "" and not und["testable"]
+
+
+def test_new_screen_that_already_exists_asks():
+    und, _, _ = run(plain_answer(screens=[scr("Allergy form", status="new", matches="patient-allergy-form-workspace")]))
+    assert und["testable"] and any("described as new" in q and "patient-allergy-form-workspace" in q
+                                   for q in und["questions"])
+
+
+def test_ai_guess_of_unknown_screen_is_dropped_when_the_code_finds_it():
+    und, _, _ = run(plain_answer(risks=[{"kind": "unknown-screen", "detail": "AI is unsure"}]))
+    assert "unknown-screen" not in kinds(und) and und["testable"]
+
+
+def test_ai_guess_of_unknown_screen_is_kept_without_a_library():
+    und, _, _ = run(plain_answer(risks=[{"kind": "unknown-screen", "detail": "AI is unsure"}]), lookup=None,
+                    catalogue=None)
+    assert "unknown-screen" in kinds(und)
+
+
 def test_unknown_changed_screen_makes_it_untestable_with_a_question():
-    und, _, _ = run(plain_answer(screens=[{"name": "Dental Chart tab", "role": "changed"},
-                                          {"name": "Patient chart", "role": "used"}]),
+    und, _, _ = run(plain_answer(screens=[scr("Dental Chart tab"), scr("Patient chart", "used")]),
                     lookup=lambda n: [] if "Dental" in n else [("patient-chart", "x.tsx")])
     assert not und["testable"] and "Dental Chart tab" in und["reason"]
     assert "unknown-screen" in kinds(und)
@@ -181,15 +233,14 @@ def test_unknown_changed_screen_makes_it_untestable_with_a_question():
 
 
 def test_unknown_used_screen_only_asks():
-    und, _, _ = run(plain_answer(screens=[{"name": "Allergies widget", "role": "changed"},
-                                          {"name": "Mystery page", "role": "used"}]),
+    und, _, _ = run(plain_answer(screens=[scr("Allergies widget"), scr("Mystery page", "used")]),
                     lookup=lambda n: [] if "Mystery" in n else [("patient-chart", "x.tsx")])
     assert und["testable"] and "unknown-screen" in kinds(und)
     assert any("which existing screen" in q for q in und["questions"])
 
 
 def test_no_code_library_skips_the_screen_check():
-    und, _, _ = run(lookup=None)
+    und, _, _ = run(lookup=None, catalogue=None)
     assert und["screens"][0]["found_in_code"] is None and und["testable"]
     assert und["meta"]["screen_check"].startswith("skipped")
 
@@ -204,6 +255,8 @@ def test_real_code_library_lookup():
         assert index.find_screen("patient banner") and index.find_screen("login page")
         for fake in ("Dental Chart tab", "Book Flight button", "Crypto wallet", "weather widget"):
             assert index.find_screen(fake) == [], fake
+        names = [line for _, line in index.screens_for("Allergies are listed by severity on the Allergies widget")]
+        assert len(names) <= 25 and any("allerg" in n for n in names[:5])
     finally:
         index.close()
 
@@ -227,8 +280,36 @@ def test_doubtful_request_stays_testable():
 
 
 def test_backend_only_is_untestable_even_if_the_ai_says_yes():
-    und, _, _ = run(plain_answer(risks=[{"kind": "backend-only", "detail": "database index only"}], testable=True))
-    assert not und["testable"] and und["reason"].startswith("backend-only")
+    und, _, _ = run(plain_answer(risks=[{"kind": "backend-only", "detail": "database index only"}], testable=True,
+                                 screens=[scr("Patient search", "used")]))
+    assert not und["testable"] and und["reason"].startswith("backend-only") and und["test_scope"] == "none"
+
+
+def test_backend_only_change_to_an_existing_screen_gets_a_regression_check():
+    und, _, _ = run(plain_answer(risks=[{"kind": "backend-only", "detail": "type refactor"}], testable=False,
+                                 screens=[scr("Visit notes workspace", matches="patient-allergy-form-workspace"),
+                                          scr("Service queues app", "used")]))
+    assert und["testable"] and und["test_scope"] == "regression"
+    assert und["regression_screens"] == ["Visit notes workspace"] and "regression check" in und["reason"]
+
+
+@pytest.mark.parametrize("screen", [scr("Visit notes workspace", status="new"),          # not built yet
+                                    scr("Visit notes workspace", "used"),                # only shows server data
+                                    scr("Dental Chart tab")])                            # not in the code
+def test_backend_only_without_a_real_changed_screen_goes_to_clarify(screen):
+    und, _, _ = run(plain_answer(risks=[{"kind": "backend-only", "detail": "x"}], screens=[screen]),
+                    lookup=lambda n: [] if "Dental" in n else [("patient-chart", "x.tsx")])
+    assert not und["testable"] and und["test_scope"] == "none" and und["regression_screens"] == []
+
+
+def test_normal_tickets_get_full_scope():
+    und, _, _ = run()
+    assert und["test_scope"] == "full" and und["regression_screens"] == []
+
+
+def test_unrelated_beats_backend_only():
+    und, _, _ = run(plain_answer(domain_fit="unrelated", risks=[{"kind": "backend-only", "detail": "x"}]))
+    assert not und["testable"] and "does not fit" in und["reason"]
 
 
 def test_no_usable_criteria_is_untestable():
@@ -248,8 +329,9 @@ def test_ai_no_is_kept_when_no_rule_applies():
 
 
 def test_decide_order_of_rules():
-    a = plain_answer(domain_fit="unrelated")
+    a = plain_answer()
     risks = [{"kind": "backend-only", "detail": ""}]
+    assert decide(a, [], [], risks, []) == (False, decide(a, [], [], risks, [])[1], "none")
     assert decide(a, [], [], risks, [])[1].startswith("backend-only")
 
 

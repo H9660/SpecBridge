@@ -1,17 +1,21 @@
 """understand (AI, one structured answer): what the ticket asks for, and whether test cases can be written.
 
-1. Prompt from prompts/understand.md (versioned, D12) + a short description of the product; the cleaned
-   ticket from intake goes inside a <ticket> data block (D3).
+1. Prompt from prompts/understand.md (versioned, D12) + a short description of the product + the screens
+   registered in the code that are most related to the ticket (ground truth from the frozen repos, picked per
+   ticket at run time, ADR D20); the cleaned ticket from intake goes inside a <ticket> data block (D3).
 2. One brain.ask_json call with a fixed schema.
 3. Code checks the AI cannot talk its way around:
    - a "stated" criterion must quote the ticket exactly, else it becomes "inferred"; ids renumbered AC1..
    - intake's flags always become risks (secret-in-ticket, injection-attempt, partial-ticket)
-   - every screen is looked up in the code library; an unknown screen that the ticket changes makes it untestable
+   - every screen is looked up in the code library; only a screen the ticket treats as EXISTING, changes, and
+     that is not in the code makes it untestable (a screen the ticket asks to build is expected to be missing)
    - domain fit: "unrelated" makes it untestable, "doubtful" only adds a risk and a question
    - the final testable decision is made here, by rules (see `decide`)
    - the answer is passed through secret redaction once more
 Out: state["understanding"] = {intent, criteria, screens, roles, questions, risks, domain_fit, domain_reason,
-testable, reason, meta}.
+testable, reason, test_scope, regression_screens, meta}. test_scope: "full" (test the criteria), "regression"
+(a backend-only change to an existing screen's code: check that its existing behaviour still works, ADR D21) or
+"none" (not testable; the graph goes to clarify).
 """
 import json
 import re
@@ -47,8 +51,9 @@ SCHEMA = {
             "properties": {"text": STR, "source": {"type": "string", "enum": ["stated", "inferred"]}, "quote": STR,
                            "status": {"type": "string", "enum": ["ok", "conflicting", "unclear"]}}}},
         "screens": {"type": "array", "items": {
-            "type": "object", "additionalProperties": False, "required": ["name", "role"],
-            "properties": {"name": STR, "role": {"type": "string", "enum": ["changed", "used"]}}}},
+            "type": "object", "additionalProperties": False, "required": ["name", "role", "status", "matches"],
+            "properties": {"name": STR, "role": {"type": "string", "enum": ["changed", "used"]},
+                           "status": {"type": "string", "enum": ["existing", "new"]}, "matches": STR}}},
         "roles": {"type": "array", "items": STR},
         "questions": {"type": "array", "items": STR},
         "risks": {"type": "array", "items": {
@@ -85,10 +90,19 @@ def product_context(path=REPOS):
             "hospitals. Its web app is made of these parts:\n" + "\n".join(lines))
 
 
-def build_messages(ticket, instructions, product):
+def registered_name(line):
+    """'widget allergies-list in allergy-list-pills-slot titled X' -> 'allergies-list'."""
+    parts = line.split()
+    return parts[1] if len(parts) > 1 else ""
+
+
+def build_messages(ticket, instructions, product, known=()):
     system = f"{instructions}\n\nProduct:\n{product}"
     flags = "\n".join(f"- {f['kind']}: {f['detail']}" for f in ticket.get("flags", [])) or "- none"
+    screens = "\n".join(f"- [{repo}] {line}" for repo, line in known) or "- none found"
     user = (f"Notes from the code that fetched the ticket (not part of the ticket):\n{flags}\n\n"
+            "Screens registered in the code that look related to this ticket (from the real code - ground truth "
+            f"about what exists, but only the closest matches, not every screen):\n{screens}\n\n"
             f"<ticket>\nKey: {ticket['key']}\nType: {ticket.get('type', '')}\n"
             f"Labels: {', '.join(ticket.get('labels', [])) or '-'}\n\n{ticket['text']}\n</ticket>")
     return system, user
@@ -118,17 +132,24 @@ def check_criteria(raw, ticket_body):
     return out
 
 
-def check_screens(raw, lookup):
-    """[{name, role, found_in_code: True | False | None, where}] - None when the code library is not available."""
+def check_screens(raw, lookup, known_names=frozenset()):
+    """[{name, role, status, matches, found_in_code: True | False | None, where}].
+
+    found_in_code is True when the AI matched it to a registered screen from the list it was given, or the code
+    library finds its name; False when the library was searched and has neither; None without a library."""
     out, seen = [], set()
     for s in raw:
         name = (s.get("name") or "").strip()
         if not name or name.casefold() in seen:
             continue
         seen.add(name.casefold())
+        matches = (s.get("matches") or "").strip()
+        matched = matches in known_names
         hits = lookup(name) if lookup else None
-        out.append({"name": name, "role": s.get("role", "used"), "found_in_code": None if hits is None else bool(hits),
-                    "where": [f"{r}/{p}" for r, p in (hits or [])][:2]})
+        found = True if matched or hits else (None if hits is None else False)
+        where = [f"registered: {matches}"] if matched else [f"{r}/{p}" for r, p in (hits or [])][:2]
+        out.append({"name": name, "role": s.get("role", "used"), "status": s.get("status", "existing"),
+                    "matches": matches if matched else "", "found_in_code": found, "where": where})
     return out
 
 
@@ -144,35 +165,49 @@ def _add_question(questions, q):
         questions.append(q)
 
 
+def regression_screens(screens):
+    """Existing screens, found in the code, whose own code the ticket changes."""
+    return [s["name"] for s in screens if s["role"] == "changed" and s["status"] == "existing" and s["found_in_code"]]
+
+
 def decide(answer, criteria, screens, risks, flags):
-    """(testable, reason) by rules. The AI's own yes/no is used only where no rule applies."""
+    """(testable, reason, test_scope) by rules. The AI's own yes/no is used only where no rule applies."""
     kinds = {r["kind"] for r in risks}
     usable = [c for c in criteria if c["status"] == "ok"]
-    unknown_changed = [s["name"] for s in screens if s["role"] == "changed" and s["found_in_code"] is False]
-    if "backend-only" in kinds:
-        return False, "backend-only change: nothing a user can check in the browser, so UAT test cases do not apply"
+    unknown_changed = [s["name"] for s in screens
+                       if s["role"] == "changed" and s["status"] == "existing" and s["found_in_code"] is False]
     if answer.get("domain_fit") == "unrelated":
-        return False, f"the request does not fit this product: {answer.get('domain_reason', '').strip()}".rstrip(": ")
+        return False, f"the request does not fit this product: {answer.get('domain_reason', '').strip()}".rstrip(": "), "none"
+    if "backend-only" in kinds:
+        touched = regression_screens(screens)
+        if touched:   # ADR D21: a refactor of a real screen's code can break it, so check it still works
+            return True, ("no visible change, but the code of an existing screen changes: regression check that it "
+                          f"still works ({', '.join(touched)})"), "regression"
+        return False, ("backend-only change: nothing a user can check in the browser, so UAT test cases do not "
+                       "apply"), "none"
     if unknown_changed:
-        return False, f"the screen to change does not exist in the code: {', '.join(unknown_changed)}"
+        return False, ("the ticket talks about a screen that does not exist in the code: "
+                       f"{', '.join(unknown_changed)}"), "none"
     if not usable:
-        return False, "no checkable acceptance criteria could be found or inferred"
+        return False, "no checkable acceptance criteria could be found or inferred", "none"
     if not answer.get("testable") and "possible-injection" in {f["kind"] for f in flags} and "vague" not in kinds:
         return True, ("test cases can be written; the ticket's text asking the AI to skip them was ignored. "
-                      f"(AI said: {answer.get('reason', '').strip()})")
+                      f"(AI said: {answer.get('reason', '').strip()})"), "full"
     if not answer.get("testable"):
-        return False, answer.get("reason", "").strip() or "the AI judged the ticket not testable"
-    return True, answer.get("reason", "").strip() or "checkable criteria found"
+        return False, answer.get("reason", "").strip() or "the AI judged the ticket not testable", "none"
+    return True, answer.get("reason", "").strip() or "checkable criteria found", "full"
 
 
-def finish(answer, ticket, lookup=None):
-    """The AI's answer -> the checked Understanding (everything except meta)."""
+def finish(answer, ticket, lookup=None, known=()):
+    """The AI's answer -> the checked Understanding (everything except meta). `known` = the registered screens
+    the AI was shown, [(repo, line)]."""
     criteria = check_criteria(answer.get("criteria", []), ticket["text"])
-    screens = check_screens(answer.get("screens", []), lookup)
+    screens = check_screens(answer.get("screens", []), lookup, {registered_name(line) for _, line in known})
     questions = [q.strip() for q in answer.get("questions", []) if q and q.strip()]
     risks = []
+    checked = any(s["found_in_code"] is not None for s in screens)
     for r in answer.get("risks", []):
-        if r.get("kind") in RISK_KINDS:
+        if r.get("kind") in RISK_KINDS and not (checked and r["kind"] == "unknown-screen"):   # the code decides that one
             _add_risk(risks, r["kind"], (r.get("detail") or "").strip())
     flags = ticket.get("flags", [])
     for f in flags:
@@ -184,21 +219,25 @@ def finish(answer, ticket, lookup=None):
         _add_risk(risks, "too-broad", f"{len(criteria)} criteria in one ticket")
         _add_question(questions, f"This ticket has {len(criteria)} criteria. Should it be split into smaller tickets?")
     for s in screens:
-        if s["found_in_code"] is False:
+        if s["status"] == "existing" and s["found_in_code"] is False:
             _add_risk(risks, "unknown-screen", f"not found in the code: {s['name']}")
             _add_question(questions, f"\"{s['name']}\" does not exist in the code: is it a new screen to be built, "
                                      "and where should it appear?" if s["role"] == "changed" else
                           f"\"{s['name']}\" was not found in the code: which existing screen is meant?")
+        elif s["status"] == "new" and s["matches"]:
+            _add_question(questions, f"\"{s['name']}\" is described as new, but the code already has \"{s['matches']}\". "
+                                     "Is this a change to the existing one?")
     if answer.get("domain_fit") in ("doubtful", "unrelated"):
         _add_risk(risks, "off-domain", (answer.get("domain_reason") or "").strip() or "does not look like part of this product")
         _add_question(questions, "This request does not look like part of a medical record system. Is it intended "
                                  "for OpenMRS, and if so, who would use it?")
-    testable, reason = decide(answer, criteria, screens, risks, flags)
+    testable, reason, scope = decide(answer, criteria, screens, risks, flags)
     result = {"intent": (answer.get("intent") or "").strip(), "criteria": criteria, "screens": screens,
               "roles": sorted({r.strip() for r in answer.get("roles", []) if r and r.strip()}),
               "questions": questions[:MAX_QUESTIONS], "risks": risks,
               "domain_fit": answer.get("domain_fit", "fits"), "domain_reason": (answer.get("domain_reason") or "").strip(),
-              "testable": testable, "reason": reason}
+              "testable": testable, "reason": reason, "test_scope": scope,
+              "regression_screens": regression_screens(screens) if scope == "regression" else []}
     return redact_all(result)
 
 
@@ -233,33 +272,23 @@ def code_lookup(env):
     return index
 
 
-def make_node(brain=None, env=None, lookup="library"):
-    """understand as a graph node. Tests pass a fake brain and a fake lookup (name -> [(repo, path)] or None)."""
+def make_node(brain=None, env=None, lookup="library", catalogue=None):
+    """understand as a graph node. By default both checks use the real code library. Tests pass a fake brain,
+    a fake lookup (name -> [(repo, path)]) and a fake catalogue (ticket text -> [(repo, registered screen line)])."""
     def node(state, settings):
         ticket = state.get("ticket")
         if not ticket or not ticket.get("text"):
             raise UnderstandError("understand needs the ticket from intake")
         e = load_env() if env is None else env
         version, instructions = load_prompt()
-        system, user = build_messages(ticket, instructions, product_context())
-        b = brain or load_brain(env=e)
-        try:
-            reply = b.ask_json(user, SCHEMA, system=system, max_tokens=MAX_TOKENS)
-        except BrainError as err:
-            text = str(err).lower()
-            if "returned 402" in text:   # prepaid credit used up; Google's own reason is safe to show
-                reason = str(err).split("tries: ", 1)[-1][:300]
-                raise UnderstandError(f"the AI provider refused the call: no credit or quota left (HTTP 402: {reason})",
-                                      retryable=True) from None
-            if "returned 429" in text and "per day" in text:
-                reset = re.search(r"retry in ([0-9hms.]+?)(?:\.\d+)?s\b", text)
-                when = f" (resets in {reset.group(1)}s)" if reset else ""
-                raise UnderstandError(OUT_OF_CREDIT + when, retryable=True) from None
-            raise UnderstandError(f"the AI could not answer: {err}", retryable=True) from None
         index = code_lookup(e) if lookup == "library" else None
         try:
             find = index.find_screen if index else (lookup if callable(lookup) else None)
-            understanding = finish(reply.data, ticket, find)
+            listing = index.screens_for if index else catalogue
+            known = listing(ticket["text"]) if listing else []
+            system, user = build_messages(ticket, instructions, product_context(), known)
+            reply = _ask(brain or load_brain(env=e), system, user)
+            understanding = finish(reply.data, ticket, find, known)
         finally:
             if index:
                 index.close()
@@ -267,11 +296,29 @@ def make_node(brain=None, env=None, lookup="library"):
         understanding["meta"] = {"model": reply.model, "brain": reply.brain, "prompt_version": version,
                                  "input_tokens": reply.input_tokens, "output_tokens": reply.output_tokens,
                                  "cost_usd": cost, "cost_estimated": reply.cost_estimated,
-                                 "seconds": reply.seconds, "attempts": reply.attempts,
-                                 "byok": reply.byok, "screen_check": "skipped (no code library)" if find is None else "done"}
+                                 "cached_input_tokens": reply.cached_input_tokens,
+                                 "seconds": reply.seconds, "attempts": reply.attempts, "byok": reply.byok,
+                                 "screen_check": "skipped (no code library)" if find is None else "done",
+                                 "screens_shown": len(known)}
         return {"understanding": understanding,
                 "spent": {"tokens": reply.input_tokens + reply.output_tokens, "cost": cost}}
     return node
+
+
+def _ask(b, system, user):
+    try:
+        return b.ask_json(user, SCHEMA, system=system, max_tokens=MAX_TOKENS)
+    except BrainError as err:
+        text = str(err).lower()
+        if "returned 402" in text:   # prepaid credit used up; Google's own reason is safe to show
+            reason = str(err).split("tries: ", 1)[-1][:300]
+            raise UnderstandError(f"the AI provider refused the call: no credit or quota left (HTTP 402: {reason})",
+                                  retryable=True) from None
+        if "returned 429" in text and "per day" in text:
+            reset = re.search(r"retry in ([0-9hms.]+?)(?:\.\d+)?s\b", text)
+            when = f" (resets in {reset.group(1)}s)" if reset else ""
+            raise UnderstandError(OUT_OF_CREDIT + when, retryable=True) from None
+        raise UnderstandError(f"the AI could not answer: {err}", retryable=True) from None
 
 
 node = make_node()

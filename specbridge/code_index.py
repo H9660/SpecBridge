@@ -327,6 +327,20 @@ class CodeIndex:
                "ORDER BY score DESC LIMIT ?")
         return [Hit(*row) for row in self.db.execute(sql, [query, *args, k])]
 
+    def screens_for(self, text, k=25):
+        """The registered screens (pages, widgets, workspaces, modals from routes.json) in the code most related to
+        some text, e.g. a ticket: [(repo, "widget allergies-list in allergy-list-pills-slot titled ...")], best
+        first. Keyword search plus links, no embedder, so it is fast and needs no Ollama."""
+        out = []
+        for repo, path in self.rank_files(text, k=80):
+            row = self.db.execute("SELECT appears_in FROM files WHERE repo = ? AND path = ?", (repo, path)).fetchone()
+            for line in (row[0].splitlines() if row and row[0] else []):
+                if not line.startswith("inside ") and (repo, line) not in out:
+                    out.append((repo, line))
+            if len(out) >= k:
+                break
+        return out[:k]
+
     def find_screen(self, name, k=3):
         """Code a screen name points at, [(repo, path)] best first; empty means the code does not have it.
 

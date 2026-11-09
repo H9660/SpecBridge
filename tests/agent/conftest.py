@@ -48,7 +48,7 @@ def plain_answer(**changes):
     """A valid understand answer: one stated criterion, one known screen, fits, testable."""
     return {"intent": "Make the thing work", "criteria": [{"text": "The thing works", "source": "stated",
                                                           "quote": "", "status": "ok"}],
-            "screens": [{"name": "Patient chart", "role": "changed"}], "roles": ["clinician"], "questions": [],
+            "screens": [{"name": "Patient chart", "role": "changed", "status": "existing", "matches": ""}], "roles": ["clinician"], "questions": [],
             "risks": [], "domain_fit": "fits", "domain_reason": "clinical feature", "testable": True,
             "reason": "clear criteria", **changes}
 
@@ -69,10 +69,17 @@ class FakeBrain:
                      input_tokens=900, output_tokens=300, cost_usd=self.cost, seconds=0.01, attempts=1, byok=False)
 
 
-def fake_understand(brain=None, lookup=None):
-    """understand with a fake brain; lookup None = every screen found, or a function name -> [(repo, path)]."""
+KNOWN_SCREENS = [("patient-chart", "widget allergies-details-widget in patient-chart-allergies-dashboard-slot"),
+                 ("patient-chart", "workspace patient-allergy-form-workspace titled Record an allergy"),
+                 ("billing-app", "workspace billing-form-workspace")]
+
+
+def fake_understand(brain=None, lookup=None, catalogue=None):
+    """understand with a fake brain; lookup None = every screen found, or a function name -> [(repo, path)];
+    catalogue = the registered screens shown to the AI (text -> [(repo, line)])."""
     return understand.make_node(brain=brain or FakeBrain(), env={},
-                                lookup=lookup or (lambda name: [("patient-chart", "src/x.tsx")]))
+                                lookup=lookup or (lambda name: [("patient-chart", "src/x.tsx")]),
+                                catalogue=catalogue or (lambda text: KNOWN_SCREENS))
 
 
 def fake_intake(jira=None):

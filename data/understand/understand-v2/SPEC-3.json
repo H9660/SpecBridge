@@ -1,0 +1,66 @@
+{
+ "ticket": {
+  "key": "SPEC-3",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-3",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Visit Notes workspace should accept a Encounter object for editing",
+  "text": "Visit Notes workspace should accept a Encounter object for editing\n\nThe Visit notes workspace is implemented to accept an `Encounter` object on edit mode. However, it actually uses the object as if it’s of type `MappedEncounter`, like `encounter.id`, `encounter.rawDatetime`. Typescript didn’t catch this because the `Encounter` type defined in esm-core allows arbitrary fields as `any` type. The workspace is also invoked by passing in a `MappedEncounter` object instead of an `Encounter` object, so this does not technically cause any user-facing issues. However, we should still fix this, as we recently made the visit notes workspace “exported” to be used in the service queues app, thus we are leaking a non-standard abstraction type to other apps.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Update the Visit Notes workspace to accept a standard Encounter object instead of a MappedEncounter object when editing notes.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The Visit Notes workspace accepts an Encounter object when invoked in edit mode without causing user-facing regressions.",
+    "source": "stated",
+    "quote": "Visit Notes workspace should accept a Encounter object for editing",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Visit notes workspace",
+    "role": "changed",
+    "status": "existing",
+    "matches": "visit-notes-form-workspace",
+    "found_in_code": true,
+    "where": [
+     "registered: visit-notes-form-workspace"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "Are there specific editing workflows or apps (such as service queues) that should be regression tested in the browser after this prop change?"
+  ],
+  "risks": [
+   {
+    "kind": "backend-only",
+    "detail": "This is an internal code and TypeScript interface refactor for component props with no user-facing changes or visible browser behavior to test."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Editing visit notes and encounter data is a core clinical feature of OpenMRS 3.",
+  "testable": false,
+  "reason": "backend-only change: nothing a user can check in the browser, so UAT test cases do not apply",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v2 (2026-11-09)",
+   "input_tokens": 2445,
+   "output_tokens": 1558,
+   "cost_usd": 0.00767625,
+   "cost_estimated": true,
+   "seconds": 107.95,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done",
+   "screens_shown": 22
+  }
+ }
+}

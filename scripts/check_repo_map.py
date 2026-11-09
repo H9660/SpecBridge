@@ -15,7 +15,7 @@ def main():
                            capture_output=True, text=True, encoding="utf-8", check=True).stdout.splitlines()
     text = MAP.read_text(encoding="utf-8")
     # data/retrieval/<method>.md|json are covered by one row
-    missing = [f for f in files if pathlib.Path(f).name not in text and not f.startswith("data/retrieval/")]
+    missing = [f for f in files if pathlib.Path(f).name not in text and not f.startswith(("data/retrieval/", "data/understand/"))]
     if missing:
         print("Missing from docs/repo_map.md:\n  " + "\n  ".join(missing))
         raise SystemExit(1)

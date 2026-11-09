@@ -13,7 +13,7 @@ from specbridge.env import PROJECT
 RUNS = PROJECT / "data" / "runs"
 SNAPSHOTS = PROJECT / "data" / "snapshots.json"
 TICKET_KEY = re.compile(r"[A-Z][A-Z0-9]+-\d+")
-KEPT = ("ticket", "understanding")   # grows as nodes are added
+KEPT = ("ticket", "understanding", "clarification")   # grows as nodes are added
 
 
 def frozen_commits():
@@ -33,13 +33,13 @@ def path_for(state, records_dir=RUNS):
     return records_dir / key / f"{state['run_id']}.json"
 
 
-def write(state, settings, status, records_dir=RUNS, error=None, brain=None):
+def write(state, settings, status, records_dir=RUNS, error=None, brain=None, note=""):
     path = path_for(state, records_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
     now = time.time()
     record = {
         "run_id": state["run_id"], "ticket_ref": state.get("ticket_ref"), "mode": state.get("mode"),
-        "status": status, "error": error,
+        "status": status, "error": error, "note": note,
         "started_at": state.get("started_at"), "finished_at": now,
         "wall_seconds": round(now - state.get("started_at", now), 3),
         "rounds": state.get("round", 0), "spent": state.get("spent", {}), "trace": state.get("trace", []),

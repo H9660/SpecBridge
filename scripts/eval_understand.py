@@ -83,6 +83,7 @@ def run_one(key, e):
             "risks": [r["kind"] for r in und["risks"]],
             "unknown_screens": [s["name"] for s in und["screens"] if s["found_in_code"] is False],
             "cost": und["meta"]["cost_usd"], "seconds": round(time.time() - t0, 1),
+            "input_tokens": und["meta"]["input_tokens"], "cached_input_tokens": und["meta"].get("cached_input_tokens", 0),
             "prompt_version": und["meta"]["prompt_version"], "model": und["meta"]["model"]}
 
 
@@ -97,6 +98,10 @@ def report(rows):
             lines.append(f"| {g} | {len(sel)} | {sum(r['ok'] for r in sel)} |")
     cost = sum(r.get("cost") or 0 for r in rows)
     secs = [r["seconds"] for r in rows]
+    inp = sum(r.get("input_tokens") or 0 for r in rows)
+    hit = sum(r.get("cached_input_tokens") or 0 for r in rows)
+    lines += ["", f"Prompt cache: {hit:,} of {inp:,} input tokens served from the provider's cache "
+                  f"({100 * hit / inp if inp else 0:.0f}%)."]
     lines += ["", f"Total cost ${cost:.3f}; time per ticket {min(secs)}-{max(secs)} s "
                   f"(median {sorted(secs)[len(secs) // 2]} s).", "",
               "| Ticket | Group | OK | Testable | Domain | Criteria (stated / inferred) | Questions | Risks | Problems |",
@@ -123,6 +128,9 @@ def main():
     if OUT_OF_CREDIT.is_set():
         print("\nStopped: the AI provider has no credit or quota left. No report written; the answers so far are "
               f"in {OUT}. Wait (free-tier limits reset) or turn on billing, and run again.")
+        return 1
+    if not any(r.get("prompt_version") for r in rows):
+        print("\nNo ticket got an answer, so no report was written.")
         return 1
     version, md = report(rows)
     OUT.mkdir(parents=True, exist_ok=True)

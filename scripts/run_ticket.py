@@ -76,11 +76,20 @@ def main(argv=None):
         print("risks:  " + (", ".join(r["kind"] for r in u["risks"]) or "none") + f"   domain: {u['domain_fit']}")
         for q in u["questions"]:
             print(f"  ? {q}")
-        print(f"testable: {'yes' if u['testable'] else 'NO'} - {u['reason']}")
+        scope = {"full": "", "regression": " (regression check only)", "none": ""}.get(u.get("test_scope", ""), "")
+        print(f"testable: {'yes' if u['testable'] else 'NO'}{scope} - {u['reason']}")
         m = u["meta"]
-        print(f"AI:     {m['model']}, {m['input_tokens'] + m['output_tokens']} tokens, "
+        cached = f" ({m['cached_input_tokens']} input from cache)" if m.get("cached_input_tokens") else ""
+        print(f"AI:     {m['model']}, {m['input_tokens'] + m['output_tokens']} tokens{cached}, "
               f"{'~' if m.get('cost_estimated') else ''}${m['cost_usd']:.4f}, "
               f"{m['seconds']} s" + (", own key (BYOK)" if m.get("byok") else ""))
+    c = result.state.get("clarification")
+    if c:
+        print(f"clarify: {c['category']} - {c['headline']}")
+        for i, q in enumerate(c["questions"], 1):
+            print(f"  {i}. {q}")
+        print(f"  next step: {c['next_step']}")
+        print("--- Jira comment (posted by publish, later) ---\n" + c["comment"] + "\n---")
     print(f"run:    {result.run_id}")
     print(f"status: {result.status}" + (f" ({result.message})" if result.message else ""))
     print(f"record: {result.record_path}")

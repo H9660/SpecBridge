@@ -1,0 +1,152 @@
+{
+ "ticket": {
+  "key": "SPEC-32",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-32",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Enable Refund Requests and Approval for Paid Bills",
+  "text": "Enable Refund Requests and Approval for Paid Bills\n\nEnable refund and approval of paid bills when a service cannot be provided due to technical or logistical failures (e.g., broken equipment, lack of reagents, etc.).\n\nUser Story:\n\n- As an Administrator, I want to process refunds for paid bills when services cannot be fulfilled due to logistical or technical failures, so that patients/clients are not charged for undelivered services.\n\nFunctional Requirements:\n\n- Refund Eligibility\n  - Refunds apply only to bills with status PAID. Example: when service delivery is interrupted after payment (e.g., equipment failure, stock-outs)\n- Request for refund\n  - Add a “Request Refund” action on bills with status PAID\n  - Refund request captures:\n    - Bill reference\n    - Refund reason (free text or predefined list)\n  - Once requested:\n    - Bill status transitions from PAID → REFUND REQUESTED\n    - Funds are not yet released\n- Refund Approval\n  - All refund requests require Administrative approval\n  - Admin can:\n    - Approve refund\n    - Reject refund\n  - On approval:\n    - Bill status transitions from REFUND REQUESTED → REFUNDED\n  - On rejection:\n    - Bill status returns to PAID\n- Cashier Handling\n  - Approved refunds are visible to the cashier\n  - Cashier completes the refund (cash or electronic, per facility policy)\n  - System records refund completion\n  - Refund cannot be processed without prior admin approval\n- Status Transitions\n  - PAID → REFUND REQUESTED → REFUNDED\n  - PAID → REFUND REQUESTED → PAID (if rejected)\n- Audit Logging\n  - Who requested the refund\n  - Who approved/rejected it\n  - Date and time of each action\n- Scenario Workflow\n  - The patient pays for the lab test\n  - Equipment breaks before the sample is processed\n  - Cashier requests refund → status becomes REFUND REQUESTED\n  - Admin approves refund\n  - The cashier issues a refund\n  - Bill status updates to REFUNDED",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Allow cashiers and administrators to request, approve or reject, and process refunds for paid bills when services cannot be delivered.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "A 'Request Refund' action is available only on bills with status PAID.",
+    "source": "stated",
+    "quote": "Refunds apply only to bills with status PAID. Example: when service delivery is interrupted after payment",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Submitting a refund request captures the bill reference and refund reason.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Submitting a refund request updates the bill status from PAID to REFUND REQUESTED without releasing funds.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "An administrator can approve or reject refund requests.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Rejecting a refund request returns the bill status back to PAID.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "Approving a refund request transitions the bill status directly from REFUND REQUESTED to REFUNDED.",
+    "source": "inferred",
+    "quote": "",
+    "status": "conflicting"
+   },
+   {
+    "id": "AC7",
+    "text": "The bill status updates to REFUNDED only after the cashier issues the refund following admin approval.",
+    "source": "inferred",
+    "quote": "",
+    "status": "conflicting"
+   },
+   {
+    "id": "AC8",
+    "text": "Approved refunds are visible to the cashier, and a refund cannot be completed without prior admin approval.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC9",
+    "text": "The system records audit logs capturing who requested, approved, or rejected the refund, along with timestamps for each action.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "bills",
+    "role": "used",
+    "status": "existing",
+    "matches": "",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/billing-dashboard/billing-dashboard.component.tsx"
+    ]
+   },
+   {
+    "name": "Request Refund action",
+    "role": "changed",
+    "status": "new",
+    "matches": "",
+    "found_in_code": false,
+    "where": []
+   },
+   {
+    "name": "Approve refund",
+    "role": "changed",
+    "status": "new",
+    "matches": "",
+    "found_in_code": false,
+    "where": []
+   },
+   {
+    "name": "Reject refund",
+    "role": "changed",
+    "status": "new",
+    "matches": "",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [
+   "Administrator",
+   "Cashier"
+  ],
+  "questions": [
+   "Does the bill status transition to REFUNDED upon admin approval, or is there an intermediate status (such as APPROVED) before the cashier issues the payout and marks it REFUNDED?",
+   "Where should approved refunds be displayed for the cashier to view and process?",
+   "Should the refund reason be entered via free text, selected from a predefined list, or both?"
+  ],
+  "risks": [
+   {
+    "kind": "contradictory",
+    "detail": "The 'Refund Approval' section states that on admin approval the bill status transitions to REFUNDED, whereas 'Cashier Handling' and 'Scenario Workflow' indicate that the cashier issues the refund before status updates to REFUNDED."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Refund processing and approval workflows for medical bills belong to the billing module in OpenMRS 3.",
+  "testable": true,
+  "reason": "The refund request, approval, rejection, and cashier payout actions are UI-driven workflows that can be verified in the browser once the conflicting status transition is clarified.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v2 (2026-11-09)",
+   "input_tokens": 2590,
+   "output_tokens": 3435,
+   "cost_usd": 0.01482375,
+   "cost_estimated": true,
+   "seconds": 481.72,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done",
+   "screens_shown": 15
+  }
+ }
+}

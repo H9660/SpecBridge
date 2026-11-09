@@ -1,6 +1,7 @@
 """The main LangGraph graph (ARCHITECTURE.md, docs/architecture.drawio), built node by node.
 
-Now: START -> intake -> understand -> END. `run_ticket` is START: it checks the request and the brain, creates the
+Now: START -> intake -> understand -> (test scope none: clarify -> END | full / regression: END, until the
+orchestrator exists). `run_ticket` is START: it checks the request and the brain, creates the
 run, runs the graph with a checkpointer, and writes the run record however the run ends.
 
 Nodes are plain functions `node(state, settings)`; `build_graph` takes replacements, which is how
@@ -18,11 +19,11 @@ from langgraph.graph import END, START, StateGraph
 
 from specbridge.agent import preflight, run_record
 from specbridge.agent.limits import load_settings
-from specbridge.agent.nodes import intake, understand
+from specbridge.agent.nodes import clarify, intake, understand
 from specbridge.agent.state import ENABLED_MODES, MODES, SpecBridgeState, add_spent
 
-DEFAULT_NODES = {"intake": intake.node, "understand": understand.node}
-ORDER = ("intake", "understand")   # grows as nodes are built
+DEFAULT_NODES = {"intake": intake.node, "understand": understand.node, "clarify": clarify.node}
+NOT_BUILT_NOTE = "stopped after understand: the orchestrator (node 4) is not built yet"
 MAX_REF_CHARS = 2000
 RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
@@ -56,11 +57,18 @@ def build_graph(nodes=None, settings=None, checkpointer=None, interrupt_before=N
     settings = settings or load_settings()
     fns = {**DEFAULT_NODES, **(nodes or {})}
     g = StateGraph(SpecBridgeState)
-    for name in ORDER:
+    for name in ("intake", "understand", "clarify"):
         g.add_node(name, _main_node(name, fns[name], settings))
-    for a, b in zip((START, *ORDER), (*ORDER, END)):
-        g.add_edge(a, b)
+    g.add_edge(START, "intake")
+    g.add_edge("intake", "understand")
+    g.add_conditional_edges("understand", route_after_understand, ["clarify", END])
+    g.add_edge("clarify", END)
     return g.compile(checkpointer=checkpointer, interrupt_before=interrupt_before)
+
+
+def route_after_understand(state):
+    """Test scope "none" -> clarify; "full" / "regression" -> the orchestrator (END until node 4 is built)."""
+    return "clarify" if clarify.scope_of(state.get("understanding") or {}) == "none" else END
 
 
 def sqlite_checkpointer(records_dir=run_record.RUNS):
@@ -145,5 +153,11 @@ def run_ticket(ticket_ref=None, mode="dry-run", run_id=None, resume=False, prefl
     except Exception as err:
         record("error", f"{type(err).__name__}: {err}")
         raise
-    status = "paused" if app.get_state(config).next else "complete"
-    return RunResult(run_id, status, state, record(status), brain)
+    if app.get_state(config).next:
+        status, note = "paused", ""
+    else:
+        status = state.get("status") or "complete"
+        note = NOT_BUILT_NOTE if status == "complete" and state.get("understanding") else ""
+    values = app.get_state(config).values
+    path = run_record.write(values, settings, status, records_dir, None, brain, note)
+    return RunResult(run_id, status, state, path, brain, note)

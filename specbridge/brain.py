@@ -38,6 +38,7 @@ class Reply:
     attempts: int
     byok: bool | None = None  # True when OpenRouter used the team's own provider key (BYOK)
     cost_estimated: bool = False  # True when cost_usd is worked out from list prices (provider sent none)
+    cached_input_tokens: int = 0  # part of input_tokens the provider served from its prompt cache (if it says)
 
 
 class OpenAIChatBrain:
@@ -127,10 +128,11 @@ class OpenAIChatBrain:
             raise BrainError(f"{self.name} brain gave invalid JSON twice: {problem}")
         costs = [u["cost"] for u in usage_total if u.get("cost") is not None]
         input_tokens = sum(u.get("prompt_tokens", 0) for u in usage_total)
+        cached = sum((u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0 for u in usage_total)
         output_tokens = sum(_output_tokens(u) for u in usage_total)
         cost, estimated = (sum(costs), False) if costs else (self._list_price(input_tokens, output_tokens), True)
         return Reply(text=text, data=data, brain=self.name, provider=self.provider, model=model.removeprefix("models/"),
-                     input_tokens=input_tokens, output_tokens=output_tokens,
+                     input_tokens=input_tokens, output_tokens=output_tokens, cached_input_tokens=cached,
                      cost_usd=cost, cost_estimated=estimated and cost is not None,
                      seconds=round(time.time() - start, 2), attempts=attempts,
                      byok=any(u.get("is_byok") for u in usage_total) if any("is_byok" in u for u in usage_total) else None)

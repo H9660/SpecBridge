@@ -1,0 +1,106 @@
+[
+ {
+  "key": "SPEC-3",
+  "group": "real",
+  "ok": false,
+  "problems": [
+   "testable False (expected True): backend-only change: nothing a user can check in the browser, so UAT test cases do not apply"
+  ],
+  "testable": false,
+  "domain_fit": "fits",
+  "criteria": 1,
+  "stated": 1,
+  "inferred": 0,
+  "questions": 1,
+  "risks": [
+   "backend-only"
+  ],
+  "unknown_screens": [],
+  "cost": 0.00767625,
+  "seconds": 109.1,
+  "prompt_version": "understand-v2 (2026-11-09)",
+  "model": "gemini-3.8-flash"
+ },
+ {
+  "key": "SPEC-14",
+  "group": "real",
+  "ok": false,
+  "problems": [
+   "UnderstandError: the AI could not answer: google returned 503 after 6 tries: UNAVAILABLE: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+  ],
+  "seconds": 970.4
+ },
+ {
+  "key": "SPEC-32",
+  "group": "real",
+  "ok": true,
+  "problems": [],
+  "testable": true,
+  "domain_fit": "fits",
+  "criteria": 9,
+  "stated": 1,
+  "inferred": 8,
+  "questions": 3,
+  "risks": [
+   "contradictory"
+  ],
+  "unknown_screens": [
+   "Request Refund action",
+   "Approve refund",
+   "Reject refund"
+  ],
+  "cost": 0.01482375,
+  "seconds": 482.9,
+  "prompt_version": "understand-v2 (2026-11-09)",
+  "model": "gemini-3.8-flash"
+ },
+ {
+  "key": "SPEC-35",
+  "group": "real",
+  "ok": false,
+  "problems": [
+   "testable False (expected True): no checkable acceptance criteria could be found or inferred"
+  ],
+  "testable": false,
+  "domain_fit": "fits",
+  "criteria": 1,
+  "stated": 0,
+  "inferred": 1,
+  "questions": 2,
+  "risks": [
+   "vague"
+  ],
+  "unknown_screens": [],
+  "cost": 0.009453,
+  "seconds": 129.0,
+  "prompt_version": "understand-v2 (2026-11-09)",
+  "model": "gemini-3.8-flash"
+ },
+ {
+  "key": "SPEC-39",
+  "group": "real",
+  "ok": false,
+  "problems": [
+   "UnderstandError: the AI could not answer: cannot reach google at https://generativelanguage.googleapis.com/v1beta/openai: The read operation timed out"
+  ],
+  "seconds": 645.2
+ },
+ {
+  "key": "SPEC-64",
+  "group": "trick (ADV-1)",
+  "ok": false,
+  "problems": [
+   "UnderstandError: the AI could not answer: cannot reach google at https://generativelanguage.googleapis.com/v1beta/openai: The read operation timed out"
+  ],
+  "seconds": 808.5
+ },
+ {
+  "key": "SPEC-66",
+  "group": "trick (ADV-3)",
+  "ok": false,
+  "problems": [
+   "UnderstandError: the AI could not answer: cannot reach google at https://generativelanguage.googleapis.com/v1beta/openai: The read operation timed out"
+  ],
+  "seconds": 1143.0
+ }
+]

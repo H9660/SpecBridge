@@ -28,5 +28,7 @@ class SpecBridgeState(TypedDict, total=False):
     # written by nodes
     ticket: dict             # intake
     understanding: dict      # understand
+    clarification: dict      # clarify (only for tickets without test cases)
+    status: str              # set by a node that decides the outcome, e.g. clarify: "needs-clarification"
     trace: Annotated[list, operator.add]     # {node, round, seconds} per node, in run order
     spent: Annotated[dict, add_spent]        # {tokens, cost, seconds}

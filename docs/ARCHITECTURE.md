@@ -78,6 +78,8 @@ Dashed arrows are LangGraph conditional edges (a small router function reads the
 | D18 | **Workers can pull more from the knowledge base on their own** (read-only tools, team scope), paid from their own budget. A worker that needs more than its share returns status `needs_more` with a reason; the orchestrator may grant extra budget once from a 20% reserve, or accept a partial result shown as incomplete. | Agentic retrieval without runaway cost; incomplete criteria are visible to the PM, not hidden. | Fixed context only (not agentic), or unlimited lookups. |
 | D19 | **How many subagents:** 1 per criterion group (min 1, max 5) + 1 end-to-end worker if there are 2 or more workers; retries re-run only weak criteria. Workers run in parallel on the cloud LLM and one after another on a local SLM (concurrency 1). Cap, reserve and concurrency are settings. | Bounded, predictable cost; small tickets get one worker through the same code path. | A fixed number of agents per ticket. |
 
+Decisions from D20 on are kept as one file each in [adr/](adr/README.md), for example [D20](adr/0020-ground-understand-in-registered-screens.md): `understand` is given the real screens from the code, picked per ticket at run time. [D21](adr/0021-regression-check-for-backend-only-changes.md): backend-only changes to a real screen get a regression check; other untestable tickets go to clarify.
+
 ## 3. Nodes in detail
 
 ### `intake` (code)
