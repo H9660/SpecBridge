@@ -1,0 +1,105 @@
+{
+ "ticket": {
+  "key": "SPEC-6",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-6",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Unify the Current visit and Previous visit views",
+  "text": "Unify the Current visit and Previous visit views\n\nWhen you expand a queue entry, the Current visit and Previous visit tabs render the same kinds of visit information — notes, diagnoses, vitals, medications, but with the queue app's own bespoke, duplicated implementations. Each tab parses encounters its own way (the two copies have drifted, causing bugs like duplicated notes) and renders with its own layout/styling, so the tabs look different from each other and from how the same data appears in the patient chart.\n\nRather than fix these copies in place, the queue app should reuse the components the patient chart already has.\n\nSteps to reproduce\n\n1. Expand a queue entry and open the Current visit tab.\n2. Open the Previous visit tab for the same patient.\n3. Note that the same kinds of information are parsed/laid out/styled differently between the two tabs and from the patient chart.\n\nExpected — single PR that removes the redundancy and adopts shared components\n\n- Current visit tab — consume the patient chart's existing current-visit-summary extension via an extension slot (the same cross-app reuse mechanism the ward app uses), instead of the bespoke queue component.\n- Previous visit tab — reuse the patient chart's visit-summary component; since it isn't shared today, extract it into a shared library (the style guide/patient common lib) so both apps consume one implementation.\n- Drop the queue app's duplicated encounter-parsing logic and its bespoke vitals widget along the way (they're replaced by the shared components, which already parse encounters and render vitals via the shared patient-vitals-info extension).\n- Result: the visit views match the O3 look & feel, with shared components living in the style guide.\n\nNotes\n\n- Cross-repo — touches this app, openmrs-esm-patient-chart, and the shared/style-guide package; coordinate across both.\n\nSupersedes (consolidated here)\n\n- O3-5694 — migrate to the shared vitals extension. Its open [PR reference removed] to be closed; vitals handled here via the shared components.\n- O3-5695 — unify the encounter parsing. Its open [PR reference removed] to be closed; parsing is removed entirely when the shared components are adopted.\n- A single PR delivers all of the above so the same files aren't touched three times.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Standardize the Current visit and Previous visit tabs in expanded queue entries by replacing queue-specific components with shared patient chart visit summary and vitals components.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The Current visit tab in an expanded queue entry renders using the shared patient chart current-visit-summary extension instead of the bespoke queue component.",
+    "source": "stated",
+    "quote": "Current visit tab — consume the patient chart's existing current-visit-summary extension via an extension slot (the same cross-app reuse mechanism the ward app uses), instead of the bespoke queue component.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The Previous visit tab in an expanded queue entry renders using the shared visit-summary component.",
+    "source": "stated",
+    "quote": "Previous visit tab — reuse the patient chart's visit-summary component; since it isn't shared today, extract it into a shared library (the style guide/patient common lib) so both apps consume one implementation.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The queue app renders vitals via the shared patient-vitals-info extension rather than the bespoke vitals widget.",
+    "source": "stated",
+    "quote": "Drop the queue app's duplicated encounter-parsing logic and its bespoke vitals widget along the way (they're replaced by the shared components, which already parse encounters and render vitals via the shared patient-vitals-info extension).",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The visual appearance and layout of visit information in Current visit and Previous visit tabs match each other and the patient chart.",
+    "source": "stated",
+    "quote": "Result: the visit views match the O3 look & feel, with shared components living in the style guide.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "queue entry",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/modals/clear-queue-entries-modal/clear-queue-entries.resource.ts",
+     "patient-management/packages/esm-service-queues-app/src/modals/queue-entry-actions.resource.ts"
+    ]
+   },
+   {
+    "name": "Current visit tab",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/visit-context/visit-context-switcher.modal.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visit-history-table/visit-type-cell.component.tsx"
+    ]
+   },
+   {
+    "name": "Previous visit tab",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/past-visit/past-visit.resource.ts",
+     "patient-management/packages/esm-service-queues-app/src/past-visit/past-visit.component.tsx"
+    ]
+   },
+   {
+    "name": "patient chart",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/patient-chart/chart-review/chart-review.component.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/patient-chart/patient-chart.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Relates directly to queue management, patient chart visit views, and shared UI components in OpenMRS 3.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2111,
+   "output_tokens": 1089,
+   "cost_usd": 0.005667,
+   "cost_estimated": true,
+   "seconds": 316.93,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

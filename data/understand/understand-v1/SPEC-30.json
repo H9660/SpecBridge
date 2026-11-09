@@ -1,0 +1,110 @@
+{
+ "ticket": {
+  "key": "SPEC-30",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-30",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Billing \"Create bill / Add bill items\" workspace doesn't show which patient is being billed",
+  "text": "Billing \"Create bill / Add bill items\" workspace doesn't show which patient is being billed\n\nRepo: openmrs-esm-billing-app (1.4.0)\n\nFound on: test3 (3.8.0-rc.1), 2026-10-13 at 768×1024. Patient: Grace QA380-H4 (10001MJ).\n\n### Steps to reproduce\n\n1. Open a patient chart at tablet width (768 px) → Billing history → Create bill.\n2. Or, from an invoice page (`/home/billing/patient/{patientUuid}/{billUuid}`), choose Add items to bill.\n3. Look for the patient's name and OpenMRS ID on screen.\n\n### Actual\n\n- The billing workspace covers the screen on tablet and shows no patient name or identifier.\n- From the invoice page, the page's own patient banner (`src/invoice/invoice.component.tsx:226`) is covered by the workspace on tablet.\n- A cashier switching between patients can't confirm whose bill they're adding items to.\n\n### Expected\n\nThe workspace shows the patient's name and identifier (ideally the compact patient banner) at the top, on every screen size.\n\n### Cause and fix\n\n- `src/billing-form/billing-form.workspace.tsx:271-285`: `<Workspace2 …>` renders the bill form with no patient header. The workspace already receives `patientUuid` (lines 57-58).\n- Fix: follow the Dispensing pattern (`openmrs-esm-dispensing-app` `src/forms/dispense-form.workspace.tsx:67,344`). Load the patient with `usePatient(patientUuid)` and render `<ExtensionSlot name=\"patient-header-slot\" state={{ patient, patientUuid, hideActionsOverflow: true }} />` as the first child of the form.\n\n### Related\n\n[link removed]",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 3 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Display the patient's name and identifier at the top of the billing workspace across all screen sizes.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The billing workspace displays the patient's name and identifier (compact patient banner) at the top on every screen size when creating a bill or adding bill items.",
+    "source": "stated",
+    "quote": "The workspace shows the patient's name and identifier (ideally the compact patient banner) at the top, on every screen size.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "billing workspace",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/billing-dashboard/billing-dashboard.component.tsx"
+    ]
+   },
+   {
+    "name": "patient chart",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/patient-chart/chart-review/chart-review.component.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/patient-chart/patient-chart.component.tsx"
+    ]
+   },
+   {
+    "name": "Billing history",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/invoice/payments/payment-history/payment-history.component.tsx"
+    ]
+   },
+   {
+    "name": "invoice page",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/invoice/printable-invoice/printable-invoice-header.component.tsx",
+     "billing-app/src/invoice/printable-invoice/printable-invoice.component.tsx"
+    ]
+   },
+   {
+    "name": "Create bill",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/billable-services/billable-service.resource.ts",
+     "billing-app/src/billing-form/billing-checkin-form.component.tsx"
+    ]
+   },
+   {
+    "name": "Add items to bill",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/billing-form/billing-form.workspace.tsx",
+     "billing-app/src/bill-history/bill-history.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "cashier"
+  ],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Displaying patient identification on the billing workspace is standard functionality for the OpenMRS 3 billing application.",
+  "testable": true,
+  "reason": "The patient header banner can be directly tested and visually verified in the browser when opening the billing workspace on tablet and desktop screens.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2062,
+   "output_tokens": 1185,
+   "cost_usd": 0.00599025,
+   "cost_estimated": true,
+   "seconds": 387.66,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

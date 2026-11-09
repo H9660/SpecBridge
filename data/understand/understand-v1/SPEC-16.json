@@ -1,0 +1,116 @@
+{
+ "ticket": {
+  "key": "SPEC-16",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-16",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Add a schema-configurable searchable dropdown backed by a live REST endpoint",
+  "text": "Add a schema-configurable searchable dropdown backed by a live REST endpoint\n\n# The problem\n\nA nurse fills in an insurance claim form on behalf of the treating doctor. The claim has to identify the clinician, and the list of eligible clinicians lives in an insurer-maintained directory that changes continuously — people join, leave, and lose accreditation.\n\nToday our forms can't do this well:\n\n- Static dropdown choices are fixed when the form is built, so they go stale\n- Remote choices already exist (remote-select), but each list source must be registered in application code, so connecting a form to a new live list needs a developer and a software release\n- The first attempt ([PR reference removed], superseded) downloaded the whole list in one request — big lists get cut off, there's no real search, and reopened forms show a code instead of a name. [PR reference removed] is the active implementation.\n\n# What we'd build\n\nA built-in data source that a form schema can point at a REST endpoint, so form builders can back any dropdown with a live list without engine or host-app code changes.\n\n# Acceptance criteria\n\n1. Typing sends the entered term through the configured search parameter and displays matching results.\n2. Each result displays its `labelKey` value; selecting it returns the `valueKey` value to the existing form control and adapter (an obs question stores it as the obs value, exactly as any select does today).\n3. The initial (empty-term) load requests a bounded page (`limit`, default 20, overridable) — never the full collection.\n4. Reopening a saved form resolves the stored value and displays its label.\n5. The field works correctly inside existing repeating groups, with independent search and edit-mode resolution for every row. (Repetition itself is the existing repeating mechanism, not this feature.)\n6. Search and resolution failures produce a visible, accessible error state distinguishable from \"no matches.\" Note: today's remote-select collapses errors into an empty list for every data source, so this is a shared-behavior enhancement in the control as well as a data-source requirement — see the implementation contract.\n7. Existing forms and registered data sources behave unchanged, and the library gains no new required provider for consumers (`HttpClient` must remain optional — consumers that don't provide it keep working, minus this data source).\n8. Focused tests cover option mapping (`results`-wrapped and bare-array responses), search parameter construction, saved-value resolution, search and resolution failures versus successful empty results (including the visible error state), and the registration/compatibility guarantees in criterion 7.\n\n# Implementation contract\n\n- Configuration uses the standard `questionOptions.datasource: { name, config }` schema key and renders through the existing `remote-select` control. A parallel rendering type or schema key does not satisfy this ticket.\n- The engine registers the data source itself (working name `endpoint`) in the shared `DataSources` registry via optional injection, and only when that name is not already registered. A host-provided implementation therefore takes precedence regardless of initialization order: if the host registered first, the engine defers (the guard); if the host registers later, the registry's existing last-registration-wins overwrite applies. Both directions are test-pinned.\n- Config keys: `endpointUrl` (required), `labelKey` (default `display`), `valueKey` (default `uuid`), `searchParam` (default `q`), `resultsKey` (default `results`), `limit` (default `20`), `limitParam` (default `limit`).\n- Saved-value resolution convention: `GET {endpointUrl}/{urlEncodedValue}`, overridable via an optional `resolveUrlTemplate` config with a `{value}` placeholder.\n- The endpoint data source must not convert request failures into an empty successful result; failures propagate to the control. Remote-select distinguishes a request failure from a successful empty response and exposes an accessible error message.\n- Supported endpoints are browser-accessible HTTP GET endpoints returning JSON (a `results`-wrapped or bare array). Custom authentication is out of scope: same-origin endpoints may use the existing session; cross-origin endpoints must already be browser-accessible with suitable CORS configuration. Relative URLs are the portability norm (to be documented). GraphQL and POST search are out of scope.\n\n# Where the selection is stored — answered\n\nThe earlier open questions to the implementing team have been resolved, and the DHA HIE docs corrected two premises:\n\n- All selectable clinicians exist as OpenMRS providers; the form stores the provider UUID.\n- Regulator details (licence number, licensing body) live as provider attributes synced from the registry; the claim resolves them at build time — a standard claim identifies exactly one doctor by `practitioner_identification_number` + `practitioner_regulation_body`.\n- Doctor approval exists only for emergency (ECCIF) claims and is run by the HIE via OTP; standard claims have no approval step.\n\nNone of that changes this ticket's mechanism — it's recorded so the claims form design consuming this feature doesn't re-open it.\n\n# Not in scope\n\n- The encounter-provider enhancements (multiple providers, configurable roles) — separate ticket; this feature is its search mechanism\n- The eligible-providers endpoint and licence re-validation at claim build — claims module\n- Claim generation or submission\n- The React form engine equivalent",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Allow form schemas to configure searchable dropdown fields backed directly by live REST endpoints, supporting bounded result pages, saved-value resolution, and visible error states.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Typing in the search field sends the entered term using the configured search parameter and displays matching results.",
+    "source": "stated",
+    "quote": "Typing sends the entered term through the configured search parameter and displays matching results.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Each result displays its labelKey value, and selecting a result assigns its valueKey to the form control.",
+    "source": "stated",
+    "quote": "Each result displays its `labelKey` value; selecting it returns the `valueKey` value to the existing form control and adapter",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Empty-term initial loads request a bounded page adhering to the configured limit (defaulting to 20).",
+    "source": "stated",
+    "quote": "The initial (empty-term) load requests a bounded page (`limit`, default 20, overridable) — never the full collection.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Reopening a saved form resolves the stored value from the endpoint and displays its corresponding label.",
+    "source": "stated",
+    "quote": "Reopening a saved form resolves the stored value and displays its label.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "The field operates independently for each row when placed inside repeating groups for both searching and edit-mode resolution.",
+    "source": "stated",
+    "quote": "The field works correctly inside existing repeating groups, with independent search and edit-mode resolution for every row.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "Failed search and resolution requests present a visible, accessible error state that is distinguishable from an empty 'no matches' result.",
+    "source": "stated",
+    "quote": "Search and resolution failures produce a visible, accessible error state distinguishable from \"no matches.\"",
+    "status": "ok"
+   },
+   {
+    "id": "AC7",
+    "text": "Existing forms and previously registered data sources continue to work without regression.",
+    "source": "stated",
+    "quote": "Existing forms and registered data sources behave unchanged, and the library gains no new required provider for consumers",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "remote-select",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/tooling/openmrs/src/utils/importmap.ts"
+    ]
+   },
+   {
+    "name": "insurance claim form",
+    "role": "used",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [
+   "clinician",
+   "form builders",
+   "nurse"
+  ],
+  "questions": [
+   "Which existing form or test schema in the test environment should be used to verify this functionality during browser testing?",
+   "\"insurance claim form\" was not found in the code: which existing screen is meant?"
+  ],
+  "risks": [
+   {
+    "kind": "unknown-screen",
+    "detail": "not found in the code: insurance claim form"
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Form engine enhancements for dynamic, searchable dropdowns directly support OpenMRS clinical and administrative forms.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2744,
+   "output_tokens": 1199,
+   "cost_usd": 0.00655425,
+   "cost_estimated": true,
+   "seconds": 90.8,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -31,11 +31,11 @@ def test_good_run_creates_state_trace_and_record(start, records):
     assert r.status == "complete"
     assert s["run_id"] == r.run_id and s["mode"] == "dry-run" and s["ticket_ref"] == "SPEC-1" and s["round"] == 0
     assert isinstance(s["started_at"], float)
-    assert [t["node"] for t in s["trace"]] == ["START", "intake"]
+    assert [t["node"] for t in s["trace"]] == ["START", "intake", "understand"]
     assert r.record_path == records / "SPEC-1" / f"{r.run_id}.json"
     rec = record_of(r)
     assert rec["status"] == "complete" and rec["error"] is None
-    assert rec["brain"]["model"] == "google/gemini-3.8-flash"
+    assert rec["brain"]["model"] == "gemini-3.8-flash"
     assert rec["settings"]["cost_cap_usd"] == 0.25 and rec["settings"]["max_rounds"] == 2
     assert len(rec["frozen_commits"]) == 5
 
@@ -86,8 +86,8 @@ def test_refused_requests_create_nothing(start, records, kwargs, message):
 
 def test_failed_brain_check_creates_no_record(start, records):
     def no_key(env=None, network=True):
-        raise PreflightError("brain 'llm' needs OPENROUTER_API_KEY in .env")
-    with pytest.raises(PreflightError, match="OPENROUTER_API_KEY"):
+        raise PreflightError("brain 'llm' needs GEMINI_API_KEY in .env")
+    with pytest.raises(PreflightError, match="GEMINI_API_KEY"):
         start(brain_check=no_key)
     assert json_files(records) == []
 
@@ -127,7 +127,7 @@ def test_crashed_run_can_be_resumed(start):
         start("SPEC-63", run_id="crash-2", nodes={"intake": boom})
     r = start(None, run_id="crash-2", resume=True)
     assert r.status == "complete"
-    assert [t["node"] for t in r.state["trace"]] == ["START", "intake"]
+    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand"]
 
 
 def test_ctrl_c_writes_interrupted_and_can_resume(start, records):
@@ -145,7 +145,7 @@ def test_paused_run_resumes_without_repeating_nodes(start):
     assert [t["node"] for t in paused.state["trace"]] == ["START"]
     done = start(None, run_id="pause-1", resume=True)
     assert done.status == "complete"
-    assert [t["node"] for t in done.state["trace"]] == ["START", "intake"]
+    assert [t["node"] for t in done.state["trace"]] == ["START", "intake", "understand"]
     assert done.state["started_at"] == paused.state["started_at"]
 
 
@@ -209,8 +209,7 @@ def test_broken_config_is_refused(tmp_path, text, message):
 
 # --- brain check (preflight) -----------------------------------------------------------------------
 
-OR = "https://openrouter.ai/api/v1"
-MODELS = {"data": [{"id": "google/gemini-3.8-flash"}, {"id": "anthropic/claude-sonnet-5.5"}]}
+MODELS = {"data": [{"id": "models/gemini-3.8-flash"}, {"id": "models/gemini-4-argon"}]}
 
 
 def fake_fetch(answers):
@@ -218,7 +217,7 @@ def fake_fetch(answers):
     calls = []
 
     def fetch(url, headers):
-        calls.append(url)
+        calls.append((url, headers))
         reply = answers[url.rsplit("/", 1)[1]]
         if isinstance(reply, Exception):
             raise reply
@@ -227,19 +226,16 @@ def fake_fetch(answers):
     return fetch
 
 
-def ok_answers(**changes):
-    return {"key": {"data": {"limit": 10, "limit_remaining": 7.5}},
-            "credits": {"data": {"total_credits": 10, "total_usage": 2}}, "models": MODELS, **changes}
+ENV = {"BRAIN": "llm", "GEMINI_API_KEY": FAKE_KEY}
 
 
-ENV = {"BRAIN": "llm", "OPENROUTER_API_KEY": FAKE_KEY}
-
-
-def test_brain_check_passes():
-    fetch = fake_fetch(ok_answers())
+def test_brain_check_passes_with_one_call():
+    fetch = fake_fetch({"models": MODELS})
     info = check_brain(ENV, fetch=fetch)
-    assert info["network_checked"] and info["key_limit_remaining"] == 7.5 and info["credit_remaining"] == 8
-    assert info["warnings"] == [] and [u.rsplit("/", 1)[1] for u in fetch.calls] == ["key", "credits", "models"]
+    assert info["network_checked"] and (info["provider"], info["model"]) == ("google", "gemini-3.8-flash")
+    assert [u for u, _ in fetch.calls] == ["https://generativelanguage.googleapis.com/v1beta/openai/models"]
+    assert fetch.calls[0][1] == {"Authorization": f"Bearer {FAKE_KEY}"}
+    assert "estimates at list price" in info["warnings"][0]
 
 
 def test_offline_brain_check_makes_no_call():
@@ -249,16 +245,16 @@ def test_offline_brain_check_makes_no_call():
 
 
 @pytest.mark.parametrize("env, answers, message", [
-    ({"BRAIN": "llm"}, {}, "needs OPENROUTER_API_KEY"),
-    ({"BRAIN": "nope", "OPENROUTER_API_KEY": FAKE_KEY}, {}, "unknown brain 'nope'"),
-    (ENV, ok_answers(key=preflight.HTTPStatus(401)), "rejected OPENROUTER_API_KEY"),
-    (ENV, ok_answers(key=preflight.HTTPStatus(403)), "rejected OPENROUTER_API_KEY"),
-    (ENV, ok_answers(key={"data": {"limit": 5, "limit_remaining": 0}}), "spending limit is used up"),
-    (ENV, ok_answers(models={"data": [{"id": "other/model"}]}), "'google/gemini-3.8-flash' is not offered"),
-    ({**ENV, "BRAIN_MODEL": "google/gemini-typo"}, ok_answers(), "'google/gemini-typo' is not offered"),
-    (ENV, ok_answers(key=urllib.error.URLError("no route")), "cannot reach openrouter"),
-    (ENV, ok_answers(key=TimeoutError()), "cannot reach openrouter"),
-    (ENV, ok_answers(key=preflight.HTTPStatus(503)), "answered HTTP 503"),
+    ({"BRAIN": "llm"}, {}, "needs GEMINI_API_KEY"),
+    ({"BRAIN": "nope", "GEMINI_API_KEY": FAKE_KEY}, {}, "unknown brain 'nope'"),
+    (ENV, {"models": preflight.HTTPStatus(400)}, "google rejected GEMINI_API_KEY"),
+    (ENV, {"models": preflight.HTTPStatus(401)}, "google rejected GEMINI_API_KEY"),
+    (ENV, {"models": preflight.HTTPStatus(403)}, "google rejected GEMINI_API_KEY"),
+    (ENV, {"models": {"data": [{"id": "models/other-model"}]}}, "'gemini-3.8-flash' is not offered"),
+    ({**ENV, "BRAIN_MODEL": "gemini-typo"}, {"models": MODELS}, "'gemini-typo' is not offered"),
+    (ENV, {"models": urllib.error.URLError("no route")}, "cannot reach google"),
+    (ENV, {"models": TimeoutError()}, "cannot reach google"),
+    (ENV, {"models": preflight.HTTPStatus(503)}, "answered HTTP 503"),
 ])
 def test_brain_check_refusals_never_show_the_key(env, answers, message):
     with pytest.raises(PreflightError, match=message) as err:
@@ -266,35 +262,32 @@ def test_brain_check_refusals_never_show_the_key(env, answers, message):
     assert FAKE_KEY not in str(err.value)
 
 
-def test_no_account_credit_is_only_a_warning():
-    info = check_brain(ENV, fetch=fake_fetch(ok_answers(credits={"data": {"total_credits": 1, "total_usage": 1}})))
-    assert "BYOK" in info["warnings"][0]
-
-
-def test_unreadable_credit_is_only_a_warning():
-    info = check_brain(ENV, fetch=fake_fetch(ok_answers(credits=preflight.HTTPStatus(403))))
-    assert info["warnings"] == ["could not read the OpenRouter account credit"]
+def test_model_override_is_checked():
+    assert check_brain({**ENV, "BRAIN_MODEL": "gemini-4-argon"}, fetch=fake_fetch({"models": MODELS}))["model"] == \
+        "gemini-4-argon"
 
 
 def test_slm_brain_checks_the_local_model():
     fetch = fake_fetch({"models": {"data": [{"id": "llama3:8b"}]}})
     with pytest.raises(PreflightError, match="ollama pull"):
         check_brain({"BRAIN": "slm"}, fetch=fetch)
-    assert [u.rsplit("/", 1)[1] for u in fetch.calls] == ["models"]
+    assert [u.rsplit("/", 1)[1] for u, _ in fetch.calls] == ["models"]
 
 
 # --- command line ----------------------------------------------------------------------------------
 
 def cli(*args, key=FAKE_KEY):
-    env = {**os.environ, "OPENROUTER_API_KEY": key, "BRAIN": "llm"}
+    """The command line in a subprocess; key=None keeps the real key from .env."""
+    env = {**os.environ, "BRAIN": "llm", **({} if key is None else {"GEMINI_API_KEY": key})}
     return subprocess.run([sys.executable, str(PROJECT / "scripts" / "run_ticket.py"), *args],
                           capture_output=True, text=True, env=env, timeout=60)
 
 
 @pytest.mark.live
-@pytest.mark.skipif(not load_env().get("ATLASSIAN_API_TOKEN"), reason="Jira login not set in .env")
+@pytest.mark.skipif(not (load_env().get("ATLASSIAN_API_TOKEN") and load_env().get("GEMINI_API_KEY")),
+                    reason="Jira login and GEMINI_API_KEY needed in .env")
 def test_cli_runs_a_ticket(records):
-    out = cli("SPEC-1", "--no-preflight", "--records-dir", str(records))
+    out = cli("SPEC-1", "--records-dir", str(records), key=None)
     assert out.returncode == 0, out.stderr
     assert "status: complete" in out.stdout and "run:" in out.stdout and str(records / "SPEC-1") in out.stdout
     assert FAKE_KEY not in out.stdout + out.stderr
@@ -313,13 +306,13 @@ def test_cli_refusals_exit_2(records, args, message):
 
 def test_cli_missing_key_exits_2(records):
     out = cli("SPEC-1", "--no-preflight", "--records-dir", str(records), key="")
-    assert out.returncode == 2 and "OPENROUTER_API_KEY" in out.stderr
+    assert out.returncode == 2 and "GEMINI_API_KEY" in out.stderr
 
 
-# --- live (needs OPENROUTER_API_KEY in .env) -------------------------------------------------------
+# --- live (needs GEMINI_API_KEY in .env) -----------------------------------------------------------
 
 @pytest.mark.live
-@pytest.mark.skipif(not load_env().get("OPENROUTER_API_KEY"), reason="OPENROUTER_API_KEY not set in .env")
+@pytest.mark.skipif(not load_env().get("GEMINI_API_KEY"), reason="GEMINI_API_KEY not set in .env")
 def test_live_brain_check():
     info = check_brain()
-    assert info["network_checked"] and info["provider"] == "openrouter"
+    assert info["network_checked"] and info["provider"] == "google"

@@ -1,0 +1,118 @@
+{
+ "ticket": {
+  "key": "SPEC-14",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-14",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Support concept reference ranges in the Angular form engine",
+  "text": "Support concept reference ranges in the Angular form engine\n\nThe Angular form engine currently validates numeric questions using only the `min` and `max` values defined in the form schema. It does not load patient-specific ranges from the `/conceptreferencerange` REST resource available in Platform 2.7+.\n\nThis means a form can accept a value that the backend rejects when the encounter is submitted.\n\nConcept reference ranges can depend on patient information such as age, sex, or previous observations. They must therefore be fetched for each patient.\n\n## Acceptance criteria:\n\n- Fetch the patient-applicable reference range for each numeric observation question.\n- Support concepts defined by UUID or concept mapping.\n- Use the `lowAbsolute` and `hiAbsolute` values for validation.\n- Apply the range before the form is created.\n- Keep any stricter `min` or `max` already defined in the form schema.\n- Apply a range when both effective bounds can be determined.\n- Support nested numeric questions.\n- Continue loading the form when offline or when the backend does not support the resource.\n- Add tests showing that the range returned by the backend is applied, including a lower bound of zero.\n\n## Out of scope:\n\n- Reference ranges with only one bound and no matching schema bound. This requires a change in ngx-formentry.\n- Matching the backend’s observation, encounter, and historical-date context. Support varies by Platform version and should be handled in a follow-up ticket.\n- Testing how reference-range criteria are evaluated. Criteria are evaluated by the backend.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Validate numeric form questions against patient-specific concept reference ranges fetched from the backend while preserving any stricter form schema bounds.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Fetch patient-applicable concept reference ranges for each numeric observation question on the form.",
+    "source": "stated",
+    "quote": "Fetch the patient-applicable reference range for each numeric observation question.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Support reference range lookup for concepts identified by UUID or concept mapping.",
+    "source": "stated",
+    "quote": "Support concepts defined by UUID or concept mapping.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Validate numeric values against lowAbsolute and hiAbsolute bounds from the reference range.",
+    "source": "stated",
+    "quote": "Use the `lowAbsolute` and `hiAbsolute` values for validation.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Apply the calculated reference range before the form is rendered.",
+    "source": "stated",
+    "quote": "Apply the range before the form is created.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Retain any min or max value from the form schema that is stricter than the concept reference range bounds.",
+    "source": "stated",
+    "quote": "Keep any stricter `min` or `max` already defined in the form schema.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "Apply the range validation when both effective lower and upper bounds can be determined.",
+    "source": "stated",
+    "quote": "Apply a range when both effective bounds can be determined.",
+    "status": "ok"
+   },
+   {
+    "id": "AC7",
+    "text": "Support reference range validation for nested numeric questions.",
+    "source": "stated",
+    "quote": "Support nested numeric questions.",
+    "status": "ok"
+   },
+   {
+    "id": "AC8",
+    "text": "Ensure the form continues to load without error when offline or when the backend does not support the reference range resource.",
+    "source": "stated",
+    "quote": "Continue loading the form when offline or when the backend does not support the resource.",
+    "status": "ok"
+   },
+   {
+    "id": "AC9",
+    "text": "Enforce backend-provided bounds including lower bounds of zero.",
+    "source": "stated",
+    "quote": "Add tests showing that the range returned by the backend is applied, including a lower bound of zero.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Angular form engine",
+    "role": "changed",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "What specific validation error message should be displayed to the user when an input falls outside the reference range bounds?",
+   "\"Angular form engine\" does not exist in the code: is it a new screen to be built, and where should it appear?"
+  ],
+  "risks": [
+   {
+    "kind": "unknown-screen",
+    "detail": "not found in the code: Angular form engine"
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Clinical forms and numeric concept validation are core capabilities of OpenMRS electronic medical record workflows.",
+  "testable": false,
+  "reason": "the screen to change does not exist in the code: Angular form engine",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1939,
+   "output_tokens": 1139,
+   "cost_usd": 0.0057255,
+   "cost_estimated": true,
+   "seconds": 103.13,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

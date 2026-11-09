@@ -1,0 +1,86 @@
+{
+    "ticket": {
+        "key": "SPEC-1",
+        "url": "https://rooks101.atlassian.net/browse/SPEC-1",
+        "type": "Bug",
+        "status": "To Do",
+        "title": "Patient search results unmount and remount on every keystroke, causing multi-second UI stalls and heap growth",
+        "text": "Patient search results unmount and remount on every keystroke, causing multi-second UI stalls and heap growth\n\n## Symptom\n\nIn the patient search (both the compact dropdown and the advanced search page), every keystroke that changes the query causes the entire rendered banner list to unmount and remount. With ~50 accumulated patient banners (e.g. five auto-paginated pages of ten), this:\n\n- triggers ~150 simultaneous backend requests (per-banner `/obs` photo lookup, `/visit`, `/person`) within a few ms\n- blocks the JS main thread long enough that the next keystroke event sits in the event queue for multiple seconds before dispatching\n- accumulates promise-reaction / SWR-subscriber state in the heap that does not appear to be released\n\nIn one captured session, a single keypress took 3.7 s to register as a network request, and three Firefox heap snapshots taken seconds apart showed `mCallback` edges growing 75k → 153k → 458k.\n\n## Reproduce\n\n1. Open the patient search workspace (compact dropdown is enough).\n2. Type a query that returns many results, e.g. `10`.\n3. Scroll the results so the IntersectionObserver auto-paginates a few times (accumulate ~50 banners).\n4. Type one more character and watch DevTools Network + Performance:\n\n   - 100+ simultaneous `/obs?patient=…&concept=…` and `/visit?patient=…` requests fire.\n\n   - The new `/patient?q=…` request is delayed by 1–5 s after the keypress.\n\n1. Repeat several times and take Memory snapshots; retained heap grows monotonically.\n\n## Root cause\n\n`useInfinitePatientSearch` (`@openmrs/esm-patient-search-app/src/patient-search.resource.tsx:83`) calls `useSWRInfinite` without `keepPreviousData`. When `searchQuery` changes:\n\n- `getUrl` returns URLs for the new query → SWR sees a new key sequence.\n- `data` resets to `undefined`, `isLoading` becomes `true`.\n\nBoth view components gate on `isLoading` and return a skeleton/loader, throwing away the entire results subtree:\n\n- `compact-patient-search/patient-search.component.tsx:52` → `<Loader />`\n- `patient-search-page/patient-search-lg.component.tsx:41` → `<LoadingState />`\n\nEvery accumulated `<PatientBanner key={patient.uuid}>` unmounts, then remounts when the response arrives. Per remounted banner the fan-out is:\n\n- `PatientPhoto` → `usePatientPhoto` → `/obs?patient=…&concept=<photoConceptUuid>&v=full`\n- `useVisit(patientUuid)` called directly in `PatientBanner` (`patient-banner.component.tsx:41`)\n- `VisitTag` extension from `esm-patient-banner-app` → another `useVisit(patientUuid)`\n- start-visit-button slot → potentially another `useVisit`\n- `/person/<uuid>` lookups for contact-details / deceased state\n\nCompounding factor: `useSWRInfinite`'s `size` is not reset on key change. After auto-paginating to `size=5`, every subsequent keystroke immediately fires five pages of the new query in parallel. Tracked separately in O3-5715.\n\n## Proposed fix\n\nTwo changes, applied together:\n\n### 1. Keep previous data during query-change fetches\n\nAdd `keepPreviousData: true` to the `useSWRInfinite` call in `useInfinitePatientSearch`:\n\n```typescript\nconst { data, isLoading, isValidating, setSize, error, size } = useSWRInfinite(\n  shouldFetch ? getUrl : null,\n  openmrsFetch,\n  { keepPreviousData: true },\n);\n```\n\nThis keeps the banner list mounted across query changes. With stable `key={patient.uuid}`, React reuses banners for patients still in the new results, so no remount → no fan-out → no main-thread stall. `isLoading` then stays false on subsequent searches (only true on the very first load), and the loader gates in the view components don't tear down the subtree. `isValidating` can drive a non-disruptive loading hint if one is desired.\n\n### 2. Harden the loader gates\n\nChange both view components' loader gates so they only swap in the full skeleton when there is genuinely nothing to show:\n\n- `compact-patient-search/patient-search.component.tsx:52` — `if (isLoading)` → `if (isLoading && !searchResults?.length)`\n- `patient-search-page/patient-search-lg.component.tsx:41` — `if (isLoading)` → `if (isLoading && !results?.length)`\n\nThe `keepPreviousData` change above already keeps `isLoading` false during query-change fetches, but tightening the gate makes the intent explicit (\"only show the full skeleton when we have nothing to show\") and removes any reliance on SWR's `isLoading` semantics holding across versions.\n\nLeave the existing next-page indicator (the small `<Loading withOverlay={false} small />` at `patient-search.component.tsx:94-96`) untouched — it fires off `hasMore` / `isValidating`, not `isLoading`, and is the right indicator for auto-pagination.\n\n## Evidence\n\n- HAR file from 2026-05-28T10:19:28 – 10:23:22 showing 24 patient searches with response-end → first-side-effect-request gaps ranging 20 ms (idle UI) to 5.7 s (stalled UI), with the burst always firing the moment the thread frees.\n- Three Firefox heap snapshots taken seconds apart showing 141 MB → 161 MB → 181 MB retained, with `mCallback`, `mCreationStack`, `mIncumbentJSGlobal` edge counts roughly doubling per snapshot.",
+        "labels": [
+            "golden-v0",
+            "mentions-files"
+        ],
+        "flags": [
+            {
+                "kind": "mentions-files",
+                "detail": "names 5 code file(s)"
+            }
+        ]
+    },
+    "understanding": {
+        "intent": "Keep existing patient search results mounted while new search queries are loading so the UI does not unmount, stall, or display a full skeleton loader when results already exist.",
+        "criteria": [
+            {
+                "id": "AC1",
+                "text": "When typing into patient search while previous results are displayed, the existing search result banners remain visible and mounted until new results arrive rather than being replaced by a full skeleton loader.",
+                "source": "stated",
+                "quote": "This keeps the banner list mounted across query changes. With stable key={patient.uuid}, React reuses banners for patients still in the new results, so no remount → no fan-out → no main-thread stall.",
+                "status": "ok"
+            },
+            {
+                "id": "AC2",
+                "text": "In both compact patient search and the advanced search page, the full loader skeleton is only displayed when loading and there are no search results to show.",
+                "source": "stated",
+                "quote": "Change both view components' loader gates so they only swap in the full skeleton when there is genuinely nothing to show",
+                "status": "ok"
+            },
+            {
+                "id": "AC3",
+                "text": "The small next-page loading indicator for auto-pagination continues to function and remain visible when fetching additional pages.",
+                "source": "stated",
+                "quote": "Leave the existing next-page indicator (the small <Loading withOverlay={false} small /> at patient-search.component.tsx:94-96) untouched",
+                "status": "ok"
+            }
+        ],
+        "screens": [
+            {
+                "name": "compact patient search",
+                "role": "changed",
+                "found_in_code": true,
+                "where": [
+                    "patient-management/packages/esm-patient-search-app/src/compact-patient-search/compact-patient-search.component.tsx",
+                    "patient-management/packages/esm-patient-search-app/src/compact-patient-search/compact-patient-banner.component.tsx"
+                ]
+            },
+            {
+                "name": "patient-search-page",
+                "role": "changed",
+                "found_in_code": true,
+                "where": [
+                    "patient-management/packages/esm-patient-search-app/src/patient-search-page/refine-search/refine-search-tablet.component.tsx",
+                    "patient-management/packages/esm-patient-search-app/src/patient-search-page/refine-search/refine-search.component.tsx"
+                ]
+            }
+        ],
+        "roles": [],
+        "questions": [],
+        "risks": [],
+        "domain_fit": "fits",
+        "domain_reason": "Patient search (both compact dropdown and search page) is a standard core component of OpenMRS 3 patient management.",
+        "testable": true,
+        "reason": "checkable criteria found",
+        "meta": {
+            "model": "gemini-3.8-flash",
+            "brain": "llm",
+            "prompt_version": "understand-v1 (2026-11-09)",
+            "input_tokens": 2957,
+            "output_tokens": 838,
+            "cost_usd": 0.00536025,
+            "cost_estimated": true,
+            "seconds": 372.93,
+            "attempts": 1,
+            "byok": null,
+            "screen_check": "done"
+        }
+    }
+}

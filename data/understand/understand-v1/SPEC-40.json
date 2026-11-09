@@ -1,0 +1,64 @@
+{
+ "ticket": {
+  "key": "SPEC-40",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-40",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Integrate Chart Line Icon for Growth Chart in Left Navigation",
+  "text": "Integrate Chart Line Icon for Growth Chart in Left Navigation\n\nWe need to properly register the Chart Line icon for the O3 Growth Chart and integrate it into the left navigation bar.\n\nCurrently, the Growth Chart feature requires a dedicated icon in the left navigation for better usability and consistency with O3 design standards. This task focuses on registering the icon correctly within the O3 framework and ensuring it renders properly in the navigation menu.\n\nIcon :",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Display the Chart Line icon for the Growth Chart navigation item in the left navigation bar.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The Chart Line icon is registered and properly displayed for the Growth Chart item in the left navigation bar.",
+    "source": "stated",
+    "quote": "properly register the Chart Line icon for the O3 Growth Chart and integrate it into the left navigation bar.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "left navigation bar",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-search-app/src/patient-search-bar/patient-search-bar.component.tsx",
+     "patient-management/packages/esm-ward-app/src/ward-view-header/admission-requests-bar.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "Which specific icon asset, SVG, or icon library name should be used, given that the 'Icon :' section is blank?"
+  ],
+  "risks": [
+   {
+    "kind": "partial-ticket",
+    "detail": "The ticket ends abruptly with 'Icon :' without attaching or specifying the icon graphic or identifier."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Growth chart navigation in the left sidebar is a standard UI element in OpenMRS 3.",
+  "testable": true,
+  "reason": "Testers can verify whether the Growth Chart entry in the left navigation renders with the expected Chart Line icon.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1698,
+   "output_tokens": 858,
+   "cost_usd": 0.004491,
+   "cost_estimated": true,
+   "seconds": 147.27,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

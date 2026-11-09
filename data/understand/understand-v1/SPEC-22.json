@@ -1,0 +1,84 @@
+{
+ "ticket": {
+  "key": "SPEC-22",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-22",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Allow birth and death on the same calendar day",
+  "text": "Allow birth and death on the same calendar day\n\n## Impact\n\nThe registration form cannot record a patient who died on the same calendar day they were born.\n\n## Affected code\n\n- `packages/esm-patient-registration-app/src/patient-registration/validation/patient-registration-validation.ts`\n- `packages/esm-patient-registration-app/src/patient-registration/validation/patient-registration-validation.test.ts`\n\n## Root cause\n\nDeath-date validation requires the death date value to be strictly later than the birth date value.\n\nBoth dates are represented as date values normalized to midnight. The separately entered death time is not included in this comparison, so the same calendar date is rejected.\n\n## Reproduction\n\n1. Enter a patient’s birth date.\n2. Mark the patient as deceased.\n3. Enter the same date as the death date.\n4. Enter a valid death time.\n5. Attempt to submit the form.\n6. Validation rejects the death date.\n\n## Expected behavior\n\nBirth and death may occur on the same calendar day. Only a death date on an earlier calendar day should be rejected.\n\n## Implementation direction\n\nCompare the values at calendar-day precision and accept the death date when it is the same as or later than the birth date.\n\n## Acceptance criteria\n\n- The same birth and death date passes validation.\n- A death date one day before the birth date fails.\n- A later death date passes.\n- Future-death-date validation continues to work.\n- Add focused tests for each boundary.\n\nVerified against `openmrs-esm-patient-management` commit `c64fb336`.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 2 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Allow entering the same calendar date for a patient's birth and death on the registration form.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Entering the same date for birth and death passes validation.",
+    "source": "stated",
+    "quote": "The same birth and death date passes validation.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Entering a death date one day before the birth date fails validation.",
+    "source": "stated",
+    "quote": "A death date one day before the birth date fails.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Entering a death date later than the birth date passes validation.",
+    "source": "stated",
+    "quote": "A later death date passes.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Validation continues to reject a death date in the future.",
+    "source": "stated",
+    "quote": "Future-death-date validation continues to work.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "registration form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.resource.ts",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Patient registration and deceased patient tracking are standard features of OpenMRS patient-management.",
+  "testable": true,
+  "reason": "The birth and death date boundary validations can be directly executed and observed on the patient registration form.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1979,
+   "output_tokens": 923,
+   "cost_usd": 0.0049455,
+   "cost_estimated": true,
+   "seconds": 95.95,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

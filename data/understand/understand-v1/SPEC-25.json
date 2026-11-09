@@ -1,0 +1,84 @@
+{
+ "ticket": {
+  "key": "SPEC-25",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-25",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Clear stale death metadata when marking a patient alive",
+  "text": "Clear stale death metadata when marking a patient alive\n\nImpact\n\nMarking a deceased patient as alive leaves the previous death date and non-coded cause of death stored on the backend. Because the non-null death date remains stored, OpenMRS continues to return `dead: true` on reload.\n\nAffected code\n\npackages/esm-patient-registration-app/src/patient-registration/form-manager.ts\n\npackages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts\n\npackages/esm-patient-registration-app/src/patient-registration/form-manager.test.ts\n\nRoot cause\n\nWhen `isDead` is false, the frontend sends only `dead: false` and omits the death metadata fields.\n\nOpenMRS automatically clears the coded `causeOfDeath`, but it retains `deathDate` and `causeOfDeathNonCoded` when those properties are omitted. The retained non-null death date causes OpenMRS to keep the patient marked dead.\n\nReproduction\n\n1. Open a deceased patient with a death date and non-coded cause of death.\n2. Mark the patient as alive.\n3. Save the patient.\n4. Retrieve the patient through the REST API.\n5. `dead` remains true, and the previous death metadata remains.\n\nExpected behavior\n\nMarking the patient as alive should clear the death date and both forms of cause-of-death metadata.\n\nImplementation direction\n\nWhen `isDead` is false, send explicit null values for `deathDate`, `causeOfDeath`, and `causeOfDeathNonCoded`.\n\nUpdate the relevant TypeScript types to permit null values. The REST person resource accepts null for all three properties.\n\nAcceptance criteria\n\n- The payload contains `dead: false`.\n- `deathDate`, `causeOfDeath`, and `causeOfDeathNonCoded` are explicitly null.\n- Reloading through REST returns no stale death metadata.\n- FHIR continues to represent the patient as not deceased.\n- Add a unit test for the generated payload.\n- Add a request-level test confirming that `dead: false` and explicit nulls for all three death metadata fields are handed to `savePatient`.\n\nVerified against openmrs-esm-patient-management commit c64fb336, openmrs-core save handling, the webservices.rest person update contract, and the RefApp 3.8 local REST behavior.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 3 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Ensure marking a deceased patient as alive properly clears death metadata so the patient does not remain marked as dead upon reload.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Marking a deceased patient as alive clears the death date, coded cause of death, and non-coded cause of death.",
+    "source": "stated",
+    "quote": "Marking the patient as alive should clear the death date and both forms of cause-of-death metadata.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The request payload when marking a patient as alive includes dead: false and explicit null values for deathDate, causeOfDeath, and causeOfDeathNonCoded.",
+    "source": "stated",
+    "quote": "The payload contains `dead: false`.\n- `deathDate`, `causeOfDeath`, and `causeOfDeathNonCoded` are explicitly null.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "After saving a patient marked as alive, reloading does not return stale death metadata or leave the patient marked as deceased.",
+    "source": "stated",
+    "quote": "Reloading through REST returns no stale death metadata.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "FHIR represents the updated patient as not deceased.",
+    "source": "stated",
+    "quote": "FHIR continues to represent the patient as not deceased.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "patient registration",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.resource.ts",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Updating patient status and death metadata is a standard part of patient registration and management in OpenMRS.",
+  "testable": true,
+  "reason": "A tester can open a deceased patient in the registration/demographics edit screen, mark the patient as alive, save, and verify that the patient is no longer marked as dead upon reload.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2135,
+   "output_tokens": 1435,
+   "cost_usd": 0.0069825,
+   "cost_estimated": true,
+   "seconds": 28.05,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

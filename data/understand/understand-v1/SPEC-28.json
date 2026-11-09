@@ -1,0 +1,91 @@
+{
+ "ticket": {
+  "key": "SPEC-28",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-28",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Make automatically generated patient identifiers retry-safe",
+  "text": "Make automatically generated patient identifiers retry-safe\n\n## Impact\n\nRetrying a partially completed save can consume multiple generated identifier values. When editing an existing patient, it can also attach duplicate identifiers.\n\nFor a new patient, retries waste generated values but do not attach duplicates. Once the patient exists, the retry goes through `PatientResource1_8.update`, which only applies the `person` block and ignores the `identifiers` array.\n\n## Affected code\n\n- `packages/esm-patient-registration-app/src/patient-registration/form-manager.ts`\n- `packages/esm-patient-registration-app/src/patient-registration/form-manager.test.ts`\n\n## Root cause\n\nEach save attempt generates identifiers again. The save transaction remembers whether the main patient request succeeded, but it does not remember generated values or successful identifier additions.\n\nNewly added identifier fields have no `identifierUuid` (`initializeIdentifier` never sets one), so every retry POSTs to `/patient/{uuid}/identifier` without a uuid and the REST resource creates a new row each time.\n\nEach call to `/idgen/identifiersource/{uuid}/identifier` writes a log entry and advances the sequence, so every retry consumes a value.\n\nIf a later operation fails, retrying repeats identifier work that already completed.\n\n## Reproduction\n\n1. Edit an existing patient.\n2. Add an identifier configured for automatic generation.\n3. Submit the form.\n4. Allow the identifier request to succeed, then make a later operation fail.\n5. Retry the submission.\n\nAnother identifier is generated and attached to the patient.\n\n## Expected behavior\n\nRetrying the same submission should reuse the generated value and should not repeat an identifier addition that already succeeded.\n\n## Implementation direction\n\nExtend the save transaction state to retain generated identifier values and completed identifier additions, keyed by a stable identifier field key.\n\nUse serializable records rather than Set or Map. The transaction manager is stored inside `_patientRegistrationData` for offline synchronization.\n\nRetry only operations that did not complete successfully.\n\nNote on offline: esm-core's sync (`processHandler` in `esm-offline/src/sync.ts`) only writes `lastError` back to IndexedDB on failure. It never persists the mutated item content, so no transaction state (including today's `patientSaved`) survives between sync runs. Fixing that belongs in esm-core and is out of scope here. Offline mode is also disabled in the reference application (`supportOffline: false`), so the online retry path is what matters.\n\n## Acceptance criteria\n\n- A generated identifier is generated once across retries of the same submission.\n- A successful identifier addition is not repeated.\n- A failed identifier addition is retried.\n- New-patient retries do not consume another generated value.\n- Existing-patient retries do not attach duplicate identifiers.\n- The transaction state is made up of plain serializable objects (no Set or Map).\n- Add tests that fail a later operation and then retry with the same transaction state.\n\nVerified against openmrs-esm-patient-management commit c64fb336. Still applies at e23ce30c; the only change to `form-manager.ts` since is O3-5913 (awaiting identifier deletions), which does not touch identifier generation.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 4 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Ensure that retrying a patient form submission reuses already generated identifiers and does not create duplicate patient identifiers.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "A generated identifier is generated only once across retries of the same submission.",
+    "source": "stated",
+    "quote": "A generated identifier is generated once across retries of the same submission.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "An identifier addition that previously succeeded is not repeated upon retrying the submission.",
+    "source": "stated",
+    "quote": "A successful identifier addition is not repeated.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "An identifier addition that failed is re-attempted upon retrying the submission.",
+    "source": "stated",
+    "quote": "A failed identifier addition is retried.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Retrying new-patient registration does not consume additional generated identifier values.",
+    "source": "stated",
+    "quote": "New-patient retries do not consume another generated value.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Retrying an existing patient edit does not attach duplicate identifiers to the patient.",
+    "source": "stated",
+    "quote": "Existing-patient retries do not attach duplicate identifiers.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "patient registration form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.resource.ts",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Patient registration and identifier management are standard core functions in OpenMRS patient management.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2328,
+   "output_tokens": 1028,
+   "cost_usd": 0.005601,
+   "cost_estimated": true,
+   "seconds": 106.4,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

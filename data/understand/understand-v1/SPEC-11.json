@@ -1,0 +1,102 @@
+{
+ "ticket": {
+  "key": "SPEC-11",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-11",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Prevent loss of unsaved medication dosage entries when switching dosage modes",
+  "text": "Prevent loss of unsaved medication dosage entries when switching dosage modes\n\nWhen entering a medication order, switching from structured dosage to free-text dosage clears the entered dose, unit, route, frequency, and patient instructions. Switching back clears the free-text entry. An accidental switch therefore requires clinicians to re-enter their work.\n\nPreserve each mode’s unsaved entries independently while the form remains open. Show only the selected mode’s dosage fields and submit only that mode’s dosage representation.\n\nCurrent behavior\n\n- When a clinician enters a structured dosage (for example: dose, unit, route, frequency, instructions) and then switches to free-text dosage mode, the structured values are lost.\n- When they switch back, the free-text entry is also lost.\n- This forces them to re-enter information repeatedly, which slows down medication ordering and increases the risk of data entry errors.\n- If a save fails, the entered values are not preserved consistently, making retry attempts more frustrating.\n\nExpected behavior\n\n- Structured dosage details and free-text dosage entries should be preserved independently.\n- Switching between dosage modes should retain the data already entered in each mode.\n- Only the fields relevant to the currently selected mode should be visible/active at any given time.\n- Draft values should be cleared only after a successful save, not when the save fails.\n- Clinicians should be able to switch modes freely without losing medication order context.\n\nAcceptance criteria\n\n- Switching modes and back restores the values entered in each mode.\n- Inactive dosage details are hidden from the form and medication header.\n- Free-text submissions exclude structured dose, unit, route, frequency, and patient instructions.\n- Structured submissions exclude free-text dosage.\n- Failed saves preserve entered values for retry.\n- Tests cover switching in both directions, display isolation, submission filtering, and failed-save preservation.\n\nImpact\nThis improves medication order entry efficiency, reduces user frustration, and prevents loss of clinical information during routine prescribing workflows.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Retain unsaved dosage entries when toggling between structured and free-text dosage modes and when an order save fails.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Switching dosage modes and back restores the values entered in each mode.",
+    "source": "stated",
+    "quote": "Switching modes and back restores the values entered in each mode.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Inactive dosage details are hidden from the form and the medication header.",
+    "source": "stated",
+    "quote": "Inactive dosage details are hidden from the form and medication header.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Free-text dosage submissions exclude structured dose, unit, route, frequency, and patient instructions.",
+    "source": "stated",
+    "quote": "Free-text submissions exclude structured dose, unit, route, frequency, and patient instructions.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Structured dosage submissions exclude free-text dosage.",
+    "source": "stated",
+    "quote": "Structured submissions exclude free-text dosage.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Failed order saves preserve all entered dosage values for retry.",
+    "source": "stated",
+    "quote": "Failed saves preserve entered values for retry.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "Draft values are cleared only after a successful save.",
+    "source": "stated",
+    "quote": "Draft values should be cleared only after a successful save, not when the save fails.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "medication order form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/components/medication-record.component.tsx",
+     "patient-chart/packages/esm-patient-medications-app/src/add-drug-order/drug-order-form.component.tsx"
+    ]
+   },
+   {
+    "name": "medication header",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-medications-app/src/add-drug-order/drug-order-form.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "clinician"
+  ],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Medication ordering and dosage configuration are standard features of the OpenMRS 3 patient chart.",
+  "testable": true,
+  "reason": "Testers can verify dosage field retention across mode switches, field visibility, and failed save persistence directly in the medication ordering interface.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2027,
+   "output_tokens": 1020,
+   "cost_usd": 0.00534525,
+   "cost_estimated": true,
+   "seconds": 31.46,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

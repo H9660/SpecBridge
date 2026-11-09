@@ -1,0 +1,122 @@
+{
+ "ticket": {
+  "key": "SPEC-5",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-5",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Capture and surface diagnosis certainty (confirmed / provisional)",
+  "text": "Capture and surface diagnosis certainty (confirmed / provisional)\n\nBackground\n\nEvery diagnosis saved through the visit note form is presumed by fiat: the form provides no certainty control and hardcodes certainty: 'PROVISIONAL' on each diagnosis it saves (createDiagnosis in visit-notes-form.workspace.tsx). The backend stores certainty per encounter diagnosis (enum CONFIRMED / PROVISIONAL), and other writers such as REST clients may set CONFIRMED, but the primary authoring flow cannot.\n\nNothing displays the field either. The DiagnosisTags styleguide component renders only the diagnosis name and a rank-based color (red for primary, blue for secondary). The encounters table resource fetches certainty into its row model but no component renders it, and the visits widget representation does not fetch it at all.\n\nThe distinction between a confirmed and a provisional diagnosis is clinically meaningful, and a field that is neither captured nor displayed cannot carry it.\n\nProposal\n\nAdd a certainty control to the visit note form so clinicians can mark each diagnosis confirmed or provisional, using the backend's own terms (which also match FHIR's Condition.verificationStatus). Needs design input.\n\nDisplay certainty wherever diagnosis tags are rendered. Tag color already encodes rank, so options for design review:\n\n- A text suffix, for example \"Diabetes mellitus (provisional)\". Survives colorblindness, screen readers, and printing. Confirmed diagnoses stay unmarked so the common case adds no noise.\n- An outline (vs. filled) tag treatment for provisional diagnoses.\n- A tooltip or accessible description only.\n\nScope\n\nVisit note form in esm-patient-notes-app: add the certainty control and stop hardcoding PROVISIONAL.\n\nDiagnosisTags in esm-core's styleguide (separate esm-core PR).\n\nAdd certainty to the visits widget representation in esm-patient-chart so visit-level rollups have the data. The encounters table representation already fetches it.\n\nExtend the dedupeDiagnoses helper (added in O3-5822) with specified aggregation rules for duplicates of the same concept across encounters of one visit: identity is the concept UUID or exact non-coded text; rank is the minimum across duplicates (primary if primary in any encounter); certainty is the strongest across duplicates (confirmed if confirmed in any encounter). Document and test both rules. The result is a display-level aggregate: it retains one contributing record's uuid (as a stable key), display, and diagnosis reference, while rank and certainty are aggregates that may not match that record. It must not be treated as an encounter diagnosis.\n\nOpen questions\n\nVisual encoding for certainty on tags, pending design input.\n\nWhether tag length is a concern in dense visit rows with several diagnoses.\n\nWhether existing PROVISIONAL data should be labelled as provisional once display lands, given it was recorded without clinician choice.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Allow clinicians to record diagnosis certainty (confirmed or provisional) in visit notes and display diagnosis certainty across diagnosis tags and visit summaries.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Clinicians can mark each diagnosis as confirmed or provisional using a certainty control in the visit note form.",
+    "source": "stated",
+    "quote": "Add a certainty control to the visit note form so clinicians can mark each diagnosis confirmed or provisional, using the backend's own terms",
+    "status": "unclear"
+   },
+   {
+    "id": "AC2",
+    "text": "Diagnosis certainty is displayed wherever diagnosis tags are rendered.",
+    "source": "stated",
+    "quote": "Display certainty wherever diagnosis tags are rendered.",
+    "status": "unclear"
+   },
+   {
+    "id": "AC3",
+    "text": "In visit-level duplicate diagnosis aggregation, certainty is aggregated to the strongest across duplicates (confirmed if confirmed in any encounter).",
+    "source": "stated",
+    "quote": "certainty is the strongest across duplicates (confirmed if confirmed in any encounter).",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "In visit-level duplicate diagnosis aggregation, rank is aggregated to the minimum across duplicates (primary if primary in any encounter).",
+    "source": "stated",
+    "quote": "rank is the minimum across duplicates (primary if primary in any encounter)",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "visit note form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-notes-app/src/notes/visit-notes-form.workspace.tsx",
+     "patient-chart/packages/esm-patient-notes-app/src/notes/visit-notes.resource.ts"
+    ]
+   },
+   {
+    "name": "DiagnosisTags",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/framework/esm-styleguide/src/diagnosis-tags/diagnosis-tags.component.tsx",
+     "core/packages/framework/esm-styleguide/src/config-schema.ts"
+    ]
+   },
+   {
+    "name": "visits widget",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/visit-context/visit-context-switcher.modal.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visit-history-table/visit-type-cell.component.tsx"
+    ]
+   },
+   {
+    "name": "encounters table",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/past-visits-components/encounters-table/encounters-table.resource.ts",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/past-visits-components/encounters-table/visit-encounters-table.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "clinician"
+  ],
+  "questions": [
+   "What specific UI control (e.g., dropdown, radio buttons, toggle) should be used for certainty on the visit note form?",
+   "Which visual design has been selected for displaying certainty in DiagnosisTags (e.g., text suffix, outline styling, or tooltip)?",
+   "Should existing diagnoses recorded as provisional before this change be labeled as provisional in the UI?"
+  ],
+  "risks": [
+   {
+    "kind": "vague",
+    "detail": "The visual presentation of certainty on diagnosis tags and the specific input control in the form are undecided pending design input."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Capturing and displaying diagnosis certainty is a core clinical EMR capability in OpenMRS.",
+  "testable": true,
+  "reason": "Testers can verify saving diagnoses with confirmed vs provisional certainty in the visit note form and check deduplicated aggregation rules in the visit summary once the UI presentation is resolved.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2210,
+   "output_tokens": 1286,
+   "cost_usd": 0.00648,
+   "cost_estimated": true,
+   "seconds": 76.21,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

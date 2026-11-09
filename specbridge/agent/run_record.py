@@ -13,7 +13,7 @@ from specbridge.env import PROJECT
 RUNS = PROJECT / "data" / "runs"
 SNAPSHOTS = PROJECT / "data" / "snapshots.json"
 TICKET_KEY = re.compile(r"[A-Z][A-Z0-9]+-\d+")
-KEPT = ("ticket",)   # grows as nodes are added
+KEPT = ("ticket", "understanding")   # grows as nodes are added
 
 
 def frozen_commits():

@@ -1,0 +1,93 @@
+{
+ "ticket": {
+  "key": "SPEC-26",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-26",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Preserve existing location attributes while searching",
+  "text": "Preserve existing location attributes while searching\n\n## Impact\n\nSearching for a location while editing a patient can accidentally delete the patient’s existing location person attribute.\n\n## Affected code\n\n- `packages/esm-patient-registration-app/src/patient-registration/field/person-attributes/location-person-attribute-field.component.tsx`\n- `packages/esm-patient-registration-app/src/patient-registration/field/person-attributes/location-person-attribute-field.resource.tsx`\n- `packages/esm-patient-registration-app/src/patient-registration/form-manager.ts`\n\n## Root cause\n\nThe location picker loads only ten locations when there is no search query. If the patient’s saved location is not in those results, the field appears blank.\n\nTyping text that does not match a loaded option immediately sets the Formik value to `null`. The save path treats that value as an instruction to delete the existing attribute.\n\nExplicitly clearing the ComboBox does not currently clear the Formik value, so supporting deliberate removal will be new behavior.\n\n## Reproduction\n\n1. Edit a patient whose location attribute is not among the first ten locations returned.\n2. Confirm that the location field appears blank.\n3. Type in the location search field without selecting another location.\n4. Save and reload the patient.\n5. The original location attribute is missing.\n\n## Expected behavior\n\nThe saved location should be displayed. Searching should not change the stored value until the user selects another location or explicitly clears the field.\n\n## Implementation direction\n\nInclude the patient’s saved location in the available options even when it is outside the initial result page.\n\nKeep search text separate from the Formik value. Update the value only when the user selects another location or explicitly clears the ComboBox.\n\n## Acceptance criteria\n\n- A saved location outside the first result page is displayed.\n- Typing without selecting another location preserves the saved value.\n- Selecting another location updates the value.\n- Explicitly clearing the ComboBox removes the attribute.\n- Add interaction tests for display, search, selection, and explicit clearing.\n\nVerified against `openmrs-esm-patient-management` commit `c64fb336`.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 3 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Ensure existing patient location attributes are preserved when editing a patient and searching for locations, only updating when a new location is chosen or explicitly cleared.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "A saved location attribute outside the first page of results is displayed in the location field when editing a patient.",
+    "source": "stated",
+    "quote": "A saved location outside the first result page is displayed.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Typing in the location search field without selecting another location preserves the existing saved location value.",
+    "source": "stated",
+    "quote": "Typing without selecting another location preserves the saved value.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Selecting a different location from the search results updates the patient's location attribute.",
+    "source": "stated",
+    "quote": "Selecting another location updates the value.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Explicitly clearing the location ComboBox removes the location attribute upon saving.",
+    "source": "stated",
+    "quote": "Explicitly clearing the ComboBox removes the attribute.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Edit Patient",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-tests-app/src/edit-test-results/modal/edit-lab-results.modal.tsx",
+     "patient-management/packages/esm-patient-registration-app/src/widgets/edit-patient-details-button.component.tsx"
+    ]
+   },
+   {
+    "name": "Location person attribute ComboBox",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/input/combo-input/combo-input.component.tsx",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/input/combo-input/selection-tick.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Editing patient demographics and person attributes is standard functionality in OpenMRS 3 patient management/registration.",
+  "testable": true,
+  "reason": "All acceptance criteria describe checkable user interactions and field behaviors in the edit patient form.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2097,
+   "output_tokens": 731,
+   "cost_usd": 0.004314,
+   "cost_estimated": true,
+   "seconds": 50.27,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

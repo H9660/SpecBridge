@@ -1,0 +1,107 @@
+{
+ "ticket": {
+  "key": "SPEC-27",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-27",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "\"Call\" action crashes the page when the API request fails",
+  "text": "\"Call\" action crashes the page when the API request fails\n\nThe \"Call\" action in the queue table sends a request to the server to mark a patient as being called. If that request fails for any reason — network problem, server error, missing configuration — the failure is not handled gracefully.\n\nIn a development build, the failure produces a full-screen red \"Uncaught runtime errors\" overlay covering the page; the user has to reload the page to recover.\n\nIn a production build (where the dev-only error overlay is disabled), the same failure becomes silent — the Call button click appears to do nothing. The error is only visible in the browser console, which end users do not look at.\n\nEither way, the user gets no proper feedback (toast, snackbar, dialog) about what went wrong. They either see a developer-targeted crash screen or no feedback at all.\n\nA related, separate-but-connected issue: the Call action sends data to the server without first checking that the required values (queue name, ticket number, status) are present. If those values are missing due to misconfiguration, the same silent/crashing failure path is triggered.\n\n### Steps to Reproduce\n\n1. Open the Service Queues app.\n2. Find a queue entry whose status is the default \"waiting\" status — the Call button only appears for these.\n3. Open browser DevTools (Cmd+Opt+I) → Network tab.\n4. Change the throttling dropdown from \"No throttling\" to Offline (this simulates a network failure).\n5. Click the Call button on the queue entry.\n\nExpected: the user sees a clear error message (red toast or snackbar) saying something like \"Couldn't call patient — please try again.\" The page remains usable.\n\nActual: a full-screen \"Uncaught runtime errors: TypeError: Failed to fetch\" overlay appears in development. In a production deployment the click would appear to do nothing, with the error only visible in the browser console.\n\n### Acceptance Criteria\n\n- When the Call API request fails for any reason (network error, server returning an error, missing input), no full-screen crash overlay appears.\n- The user sees a visible error message (e.g., a red toast/snackbar) explaining the action failed.\n- The page remains functional — no reload required.\n- Existing successful behavior (the confirmation modal opening on success) is preserved.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Display an error notification and keep the page usable instead of crashing or failing silently when the Call action encounters a network or API error.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "No full-screen crash overlay is shown when the Call API request fails due to network errors, server errors, or missing input.",
+    "source": "stated",
+    "quote": "When the Call API request fails for any reason (network error, server returning an error, missing input), no full-screen crash overlay appears.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "A visible error message (such as a red toast or snackbar) appears informing the user that the action failed.",
+    "source": "stated",
+    "quote": "The user sees a visible error message (e.g., a red toast/snackbar) explaining the action failed.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The page remains functional and interactive without requiring a page reload after an error.",
+    "source": "stated",
+    "quote": "The page remains functional — no reload required.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The confirmation modal opens as expected when the Call action succeeds.",
+    "source": "stated",
+    "quote": "Existing successful behavior (the confirmation modal opening on success) is preserved.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Service Queues app",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/admin/queues/queue-form.workspace.tsx",
+     "patient-management/packages/esm-service-queues-app/src/service-queues.resource.ts"
+    ]
+   },
+   {
+    "name": "queue table",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/queue-table/cells/queue-table-queue-name-cell.component.tsx",
+     "patient-management/packages/esm-service-queues-app/src/queue-table/queue-table-by-status-menu.component.tsx"
+    ]
+   },
+   {
+    "name": "Call button",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/modals/call-modal/call-queue-entry.resource.ts",
+     "patient-management/packages/esm-service-queues-app/src/modals/call-modal/call-queue-entry.modal.tsx"
+    ]
+   },
+   {
+    "name": "confirmation modal",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/history/delete-confirm.modal.tsx",
+     "core/packages/apps/esm-offline-tools-app/src/components/confirmation.modal.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "What exact message text should be displayed in the error toast or snackbar when the Call action fails?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Queue management and calling patients are core components of OpenMRS 3 patient management workflows.",
+  "testable": true,
+  "reason": "The failure and error display can be verified directly in the browser by simulating network failure or server errors via browser DevTools.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2112,
+   "output_tokens": 991,
+   "cost_usd": 0.00530025,
+   "cost_estimated": true,
+   "seconds": 142.66,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

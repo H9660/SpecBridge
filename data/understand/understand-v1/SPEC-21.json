@@ -1,0 +1,80 @@
+{
+ "ticket": {
+  "key": "SPEC-21",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-21",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Patient registration: Wait for deletions before reporting a successful save",
+  "text": "Patient registration: Wait for deletions before reporting a successful save\n\n## Problem\n\nPatient saves can report success while name, identifier, or attribute deletions are still running. Deletion failures may therefore be missed or only logged to the console.\n\n## Affected code\n\n- Name deletion\n- Identifier deletion\n- Attribute deletion\n\n## Root cause\n\nThe deletion paths use `forEach(async ...)`, which discards the resulting promises. Attribute deletion also catches failures and only logs them. It currently runs inside the synchronous `getPatientAttributes()` method.\n\n## Expected behaviour\n\nThe save operation should remain pending until all requested deletions finish. A failed deletion should cause the save to report an error.\n\n## Implementation notes\n\n- Collect and await name and identifier deletion promises.\n- Move attribute deletion out of synchronous `getPatientAttributes()` and into an asynchronous save stage.\n- Await the attribute deletions.\n- Propagate deletion failures through the existing save error handling.\n- Complete the local-language-name fix before or alongside this change.\n\n## Acceptance criteria\n\n- Save does not report success while a deletion is pending.\n- Name, identifier, and attribute deletions are awaited.\n- A failed deletion produces a visible save error.\n- Successful deletions allow the save to complete normally.\n- Deferred-promise tests cover pending, successful, and failed deletions.\n\nVerified against `openmrs-esm-patient-management` commit `c64fb3366119833e9e09a0eb31d580c9e1558d8b`.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Ensure patient registration save operations remain pending until name, identifier, and attribute deletions complete, and show an error if any deletion fails.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The registration save operation does not report success while any deletion is still pending.",
+    "source": "stated",
+    "quote": "Save does not report success while a deletion is pending.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "A failed name, identifier, or attribute deletion displays a visible save error.",
+    "source": "stated",
+    "quote": "A failed deletion produces a visible save error.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "When all deletions succeed, the patient save operation completes normally.",
+    "source": "stated",
+    "quote": "Successful deletions allow the save to complete normally.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Deferred-promise automated tests cover pending, successful, and failed deletion scenarios.",
+    "source": "stated",
+    "quote": "Deferred-promise tests cover pending, successful, and failed deletions.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Patient registration",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.resource.ts",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "What specific error message should be displayed when a deletion fails during patient save?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Patient registration and editing patient details are core features of the patient-management module in OpenMRS 3.",
+  "testable": true,
+  "reason": "Testers can remove existing patient names, identifiers, or attributes during patient registration/edit in the browser and verify the save loading indicator, successful save message, and error handling on failed requests.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1939,
+   "output_tokens": 1064,
+   "cost_usd": 0.00544425,
+   "cost_estimated": true,
+   "seconds": 33.56,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

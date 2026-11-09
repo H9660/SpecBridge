@@ -1,0 +1,129 @@
+{
+ "ticket": {
+  "key": "SPEC-9",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-9",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Improve the Workspace2 unsaved-changes confirmation modal",
+  "text": "Improve the Workspace2 unsaved-changes confirmation modal\n\nThe current Workspace2 confirmation modal uses ambiguous copy:\n\n- \"Close workspace(s)\"\n- \"You are about to close the following workspace(s), which might have unsaved changes:\"\n- \"Cancel\"\n\nThe modal only appears when affected workspaces have reported unsaved changes, so \"might\" is inaccurate. Parenthesized pluralization is difficult to scan, and \"Cancel\" does not clearly communicate whether it cancels closing the workspace or the user's work.\n\nUpdate the modal to describe the consequences clearly, distinguish singular and multiple-workspace cases, and emphasize the affected workspace titles.\n\n## Proposed copy\n\nShared title\n\nDiscard unsaved changes?\n\nSingle workspace\n\nAdd drug order has unsaved changes. Closing it will discard them.\n\nActions:\n\n- Keep editing\n- Discard changes\n\nMultiple workspaces\n\n3 workspaces have unsaved changes. Closing them will discard the changes:\n\n- Add drug order\n- Visit note\n- Record vitals\n\nActions:\n\n- Keep editing\n- Discard changes\n\n## Acceptance criteria\n\n- The modal title is \"Discard unsaved changes?\"\n- \"Keep editing\" replaces \"Cancel\".\n- \"Discard changes\" remains the destructive action.\n- The header close button and \"Keep editing\" both dismiss the modal without closing any workspace.\n- Selecting “Discard changes” confirms the close and allows the originally requested close operation to continue.\n- Singular copy is displayed when one workspace is affected.\n- Multiple-workspace copy begins with the affected workspace count.\n- Singular and multiple variants use distinct translation keys with interpolated values.\n- Parenthesised forms such as \"workspace(s)\" are not used.\n- The affected workspace title is emphasised in the singular variant.\n- All affected workspace titles are emphasised and presented as a list in the multiple-workspace variant.\n- The modal uses the small Carbon modal size.\n- Existing behaviour that skips the prompt when no affected workspace has unsaved changes is preserved.\n- Automated tests cover singular and multiple rendering, cancellation, confirmation, and the header close action.\n- New copy is added to both the core translation definitions and the English source translations.\n- The superseded `closeWorkspaces2PromptTitle` and `closeWorkspaces2PromptBody` translation keys are removed.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Update the Workspace2 unsaved-changes confirmation modal copy and layout to clearly distinguish between single and multiple workspaces and clarify the action buttons.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The modal title displays \"Discard unsaved changes?\".",
+    "source": "stated",
+    "quote": "The modal title is \"Discard unsaved changes?\"",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The cancel action is labeled \"Keep editing\".",
+    "source": "stated",
+    "quote": "\"Keep editing\" replaces \"Cancel\".",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The destructive confirmation action is labeled \"Discard changes\".",
+    "source": "stated",
+    "quote": "\"Discard changes\" remains the destructive action.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Clicking the header close button or \"Keep editing\" dismisses the modal without closing any workspace.",
+    "source": "stated",
+    "quote": "The header close button and \"Keep editing\" both dismiss the modal without closing any workspace.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Selecting \"Discard changes\" confirms the closure and proceeds with closing the affected workspaces.",
+    "source": "stated",
+    "quote": "Selecting “Discard changes” confirms the close and allows the originally requested close operation to continue.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "When a single workspace is affected, the singular copy is displayed with the workspace title emphasized.",
+    "source": "stated",
+    "quote": "Singular copy is displayed when one workspace is affected.",
+    "status": "ok"
+   },
+   {
+    "id": "AC7",
+    "text": "When multiple workspaces are affected, copy starts with the affected workspace count, and all affected workspace titles are emphasized in a list.",
+    "source": "stated",
+    "quote": "Multiple-workspace copy begins with the affected workspace count.",
+    "status": "ok"
+   },
+   {
+    "id": "AC8",
+    "text": "Parenthesized pluralization such as \"workspace(s)\" is not used in the modal copy.",
+    "source": "stated",
+    "quote": "Parenthesised forms such as \"workspace(s)\" are not used.",
+    "status": "ok"
+   },
+   {
+    "id": "AC9",
+    "text": "The modal uses Carbon's small modal size.",
+    "source": "stated",
+    "quote": "The modal uses the small Carbon modal size.",
+    "status": "ok"
+   },
+   {
+    "id": "AC10",
+    "text": "Closing workspaces that do not have unsaved changes closes them directly without displaying the confirmation modal.",
+    "source": "stated",
+    "quote": "Existing behaviour that skips the prompt when no affected workspace has unsaved changes is preserved.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Workspace2 unsaved-changes confirmation modal",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/widgets/cancel-patient-edit.modal.tsx",
+     "patient-chart/packages/esm-patient-attachments-app/src/camera-media-uploader/file-review.component.tsx"
+    ]
+   },
+   {
+    "name": "Workspace2",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "core/packages/framework/esm-styleguide/src/workspaces2/workspace2.ts",
+     "core/packages/framework/esm-styleguide/src/workspaces2/workspace2.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "It modifies the core app shell workspace confirmation dialog in OpenMRS 3.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2087,
+   "output_tokens": 1349,
+   "cost_usd": 0.006624,
+   "cost_estimated": true,
+   "seconds": 132.5,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -1,0 +1,109 @@
+{
+ "ticket": {
+  "key": "SPEC-37",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-37",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Change language modal and user menu language item crash with RangeError when allowed locales include a region",
+  "text": "Change language modal and user menu language item crash with RangeError when allowed locales include a region\n\nThe REST session endpoint reports `locale` and `allowedLocales` in Java's `Locale#toString()` form (`en_US`, `sw_KE`, `pt_BR`). These are not valid BCP 47 language tags, and `Intl.DisplayNames` throws `RangeError` rather than degrading when handed one. Two components in the primary navigation app pass these values to `Intl.DisplayNames` unnormalized, so on any deployment whose allowed locale list carries a region, both crash. The app ships regional translation bundles (`en_US`, `sw_KE`, `pt_BR`, `zh_CN` and more), so these are supported configurations, not edge cases.\n\nSteps to reproduce\n\n1. Set the `locale.allowed.list` global property to include a regional locale, e.g. `en, en_US, sw_KE`\n2. Log in and set the session locale to `en_US`\n3. Open the user menu in the top nav\n4. Click Change next to the language item\n\nObserved behavior\n\n- The user menu's language item crashes as soon as the menu opens when the session locale is regional (`new Intl.DisplayNames([session.locale], …)` throws `RangeError: Invalid language tag: en_US`)\n- The change language modal crashes on open when any allowed locale is regional, for the same reason (`change-language.modal.tsx`, `languageNames` memo)\n\nRoot cause\n\n- `change-language.modal.tsx` builds `Intl.DisplayNames` from each entry of `session.allowedLocales` raw\n- `change-language-link.extension.tsx` builds it from `session.locale` raw\n- The framework only normalizes underscores when setting `document.documentElement.lang` (`setUserLanguage` in `esm-api/src/current-user.ts`); it never writes the normalized value back to the session store and never touches `allowedLocales`, so both fields reach these components in underscore form\n\nVerified against the backend: `SessionController1_9` adds `Context.getLocale()` and `getAllowedLocales()` as raw Java `Locale` objects, which serialize via `toString()` to underscore form.\n\nSecondary issue (same modal): the last locale in a long list is invisible\n\nWith enough allowed locales (observed with 14), the last entry in the modal is invisible while still being clickable. `.languageOptionsContainer` has a `max-height` with no `overflow-y`, so the list overflows into the ModalBody, which becomes the scroll container and receives Carbon's `cds--modal-scroll-content` fade mask. The mask keeps the bottom of the body faded even at maximum scroll, so the final locale (Italiano on a 14-locale install) never becomes visible. Neither `checkVisibility()` nor hit-testing flags it, since masks affect neither. Verified live against a local instance; fixed by scrolling the container itself and clearing Carbon's fade band with an end margin.\n\nRelated\n\nThe same modal also swallows failed update requests (`handleSubmit` neither awaits nor catches), leaving the spinner stuck with no error shown; the fix for this crash addresses that alongside it since both live in the same file.\n\nOut of scope: POSIX-style variants such as `uz@Latn` can be displayed once normalized, but cannot be submitted at all — the session POST parses the value with `LocaleUtils.toLocale`, which rejects both `uz@Latn` and `uz-Latn`. Supporting those needs a backend change in webservices.rest.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 3 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Allow users to view the language menu item and open the change language modal without crashing when regional locales are configured, view all options in long locale lists, and see errors if the language update fails.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The user menu language item displays without crashing when the session locale includes a region (e.g., en_US).",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The change language modal opens successfully without crashing when any allowed locale includes a region.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "In the change language modal with a long list of locales, the last locale entry is fully visible when scrolled to the bottom.",
+    "source": "stated",
+    "quote": "the last locale in a long list is invisible",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "When saving a language change fails, the change language modal shows an error rather than remaining indefinitely stuck on the spinner.",
+    "source": "stated",
+    "quote": "The same modal also swallows failed update requests (handleSubmit neither awaits nor catches), leaving the spinner stuck with no error shown",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "top nav",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-primary-navigation-app/src/components/navbar/types.ts",
+     "core/packages/apps/esm-implementer-tools-app/src/store.ts"
+    ]
+   },
+   {
+    "name": "user menu",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-home-app/src/side-menu/side-menu.component.tsx",
+     "patient-management/packages/esm-service-queues-app/src/side-menu/side-menu.component.tsx"
+    ]
+   },
+   {
+    "name": "change language modal",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-primary-navigation-app/src/components/change-language/change-language.resource.ts",
+     "core/packages/apps/esm-primary-navigation-app/src/components/change-language/change-language-link.extension.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "What specific error message or notification should be displayed to the user when the language update request fails?"
+  ],
+  "risks": [
+   {
+    "kind": "too-broad",
+    "detail": "The ticket combines three separate fixes: the Intl.DisplayNames RangeError crash, an overflow visibility bug for long lists, and error handling for failed update requests."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "It addresses locale display and user session language settings in the OpenMRS core application shell.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2402,
+   "output_tokens": 1087,
+   "cost_usd": 0.00587775,
+   "cost_estimated": true,
+   "seconds": 35.04,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

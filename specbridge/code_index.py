@@ -34,6 +34,9 @@ SCHEMA_VERSION = 4
 CODE_FILE = re.compile(r"\.(tsx?|jsx?)$")
 TEST_FILE = re.compile(r"(\.test\.|\.spec\.|__mocks__/|__tests__/|(^|/)e2e/)")
 NOT_A_DEFINITION = re.compile(r"(mock|\.stories\.|/index\.tsx?$)")   # re-exports and stand-ins
+# Words that say what kind of screen something is, not which one; left out when looking a screen name up.
+SCREEN_WORDS = set("""page tab screen widget form view panel section button modal dialog workspace dashboard app field
+link card sidebar window popup area box icon full main new existing entire whole current""".split())
 EXPORT_NAME = re.compile(r"^export\s+(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?"
                          r"(?:function\*?|const|let|class|interface|type|enum)\s+(\w+)", re.M)
 CAMEL = re.compile(r"([a-z0-9])([A-Z])")
@@ -323,6 +326,38 @@ class CodeIndex:
                f"FROM files_fts JOIN files f ON f.id = files_fts.rowid WHERE files_fts MATCH ?{where} "
                "ORDER BY score DESC LIMIT ?")
         return [Hit(*row) for row in self.db.execute(sql, [query, *args, k])]
+
+    def find_screen(self, name, k=3):
+        """Code a screen name points at, [(repo, path)] best first; empty means the code does not have it.
+
+        A screen counts as missing only when one of its words (generic words such as "page" or "tab" left
+        out) appears nowhere in the code's paths, piece names, on-screen text or app locations: "Dental Chart"
+        is missing because nothing mentions "dental"; "full Allergies page" is not, although "full" and
+        "allergies" never appear in the same piece. Pieces with all the words together come first."""
+        terms = query_terms(name)
+        core = [w for w in terms if w not in SCREEN_WORDS] or terms
+        if not core:
+            return []
+        together = self._screen_pieces(" AND ".join(f'"{w}"' for w in core), k)
+        if together:
+            return together
+        counts = {w: self.db.execute("SELECT COUNT(*) FROM pieces_fts WHERE pieces_fts MATCH ?",
+                                     ('{path_words name_words ui_words} : "' + w + '"',)).fetchone()[0] for w in core}
+        if not all(counts.values()):
+            return []
+        return self._screen_pieces(f'"{min(counts, key=counts.get)}"', k)   # where the rarest word is
+
+    def _screen_pieces(self, match, k):
+        rows = self.db.execute(
+            "SELECT f.repo, f.path FROM pieces_fts JOIN pieces p ON p.id = pieces_fts.rowid "
+            "JOIN files f ON f.id = p.file_id WHERE pieces_fts MATCH ? AND f.is_test = 0 "
+            f"ORDER BY bm25(pieces_fts, {', '.join(map(str, PIECE_WEIGHTS))}) LIMIT ?",
+            ("{path_words name_words ui_words} : (" + match + ")", k * 10)).fetchall()
+        out = []
+        for repo, path in rows:
+            if not NOT_A_DEFINITION.search(path) and CODE_FILE.search(path) and (repo, path) not in out:
+                out.append((repo, path))
+        return out[:k]
 
     def search_pieces(self, text, k=50, repos=None):
         """Best-matching pieces by keywords (name, on-screen text, where it appears, code), best first."""

@@ -1,0 +1,127 @@
+{
+ "ticket": {
+  "key": "SPEC-18",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-18",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Vitals form button has broken template literal and missing import",
+  "text": "Vitals form button has broken template literal and missing import\n\nIn the Service Queues app, expanding a patient's row reveals a \"Current visit\" panel. If the patient has no vitals or no triage recorded yet, the panel shows empty-state messages with \"Vitals form →\" and \"Triage form →\" buttons.\n\nClicking either button should open the corresponding form in a workspace, so the clinic user can record the data without leaving the queue. Instead, both buttons navigate the user away to the patient summary page. The user has to manually navigate further to find and open it.\n\nBoth buttons are broken the same way; they appear to share copy-pasted code.\n\n### Steps to Reproduce\n\n1. Open the Service Queues app.\n2. Find or add a patient to a queue whose active visit has no vitals or no triage recorded yet.\n3. Expand the patient's row to see the \"Current visit\" panel.\n4. Click the \"Vitals form →\" button in the empty Vitals section (or the \"Triage form →\" button in the empty Triage section).\n\nExpected: the vitals or triage form opens in a workspace, ready for the user to record data. Actual: the page navigates to the patient summary screen instead.\n\n### Acceptance Criteria\n\n- Clicking \"Vitals form\" opens the vitals form workspace for the patient.\n- Clicking \"Triage form\" opens the triage form workspace for the patient.\n- Both buttons remain visible only in their respective empty states (i.e., when vitals/triage haven't been recorded yet).",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Ensure clicking the Vitals and Triage form buttons in the Service Queues current visit panel opens the corresponding forms in a workspace without navigating away.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Clicking 'Vitals form' opens the vitals form workspace for the patient.",
+    "source": "stated",
+    "quote": "Clicking \"Vitals form\" opens the vitals form workspace for the patient.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Clicking 'Triage form' opens the triage form workspace for the patient.",
+    "source": "stated",
+    "quote": "Clicking \"Triage form\" opens the triage form workspace for the patient.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Both buttons remain visible only in their respective empty states when vitals or triage have not yet been recorded.",
+    "source": "stated",
+    "quote": "Both buttons remain visible only in their respective empty states (i.e., when vitals/triage haven't been recorded yet).",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Service Queues app",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/admin/queues/queue-form.workspace.tsx",
+     "patient-management/packages/esm-service-queues-app/src/service-queues.resource.ts"
+    ]
+   },
+   {
+    "name": "Current visit panel",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/visit-context/visit-context-switcher.modal.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visit-history-table/visit-type-cell.component.tsx"
+    ]
+   },
+   {
+    "name": "Vitals form → button",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals/vitals-chart.component.tsx",
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals-biometrics-form/vitals-biometrics-input.component.tsx"
+    ]
+   },
+   {
+    "name": "Triage form → button",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/current-visit/visit-details/triage-note.component.tsx",
+     "patient-management/packages/esm-service-queues-app/src/current-visit/visit-details/current-visit-details.component.tsx"
+    ]
+   },
+   {
+    "name": "vitals form workspace",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals/vitals-chart.component.tsx",
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals-biometrics-form/vitals-biometrics-input.component.tsx"
+    ]
+   },
+   {
+    "name": "triage form workspace",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/current-visit/visit-details/triage-note.component.tsx",
+     "patient-management/packages/esm-service-queues-app/src/current-visit/visit-details/current-visit-details.component.tsx"
+    ]
+   },
+   {
+    "name": "patient summary screen",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-common-lib/src/patient-summary/patient-summary-extension-order.ts",
+     "patient-management/packages/esm-active-visits-app/src/visits-summary/visits-components/tests-summary.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "clinic user"
+  ],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Service queues and vitals/triage recording are standard patient management and clinical workflows in OpenMRS 3.",
+  "testable": true,
+  "reason": "The bug and expected behaviors describe concrete user actions in the browser with verifiable UI outcomes.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1949,
+   "output_tokens": 1004,
+   "cost_usd": 0.00522675,
+   "cost_estimated": true,
+   "seconds": 228.26,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

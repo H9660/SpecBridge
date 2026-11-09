@@ -1,0 +1,85 @@
+{
+ "ticket": {
+  "key": "SPEC-13",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-13",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Add the current past visit context to the patient header so users can easily identify the visit they are currently working in.",
+  "text": "Add the current past visit context to the patient header so users can easily identify the visit they are currently working in.\n\n### Problem\n\nWhen users switch into a past visit context, there is no persistent indication of which visit is currently active. This can lead to confusion, especially when creating or editing encounters, as users may mistakenly believe they are working in the current visit.\n\n### Proposed Solution\n\nDisplay the active past visit context prominently in the patient header whenever a user is operating within a past visit. The display should include key information such as the visit date (and optionally the visit type) to clearly distinguish it from the current visit context.\n\nThe past visit indicator should only be shown when a historical visit is active and should disappear once the user exits the past visit context.\n\n### Acceptance Criteria\n\n- When a user enters a past visit context, the patient header displays the active visit information.\n- The displayed information clearly identifies the visit (e.g., visit date and, where applicable, visit type).\n- The indicator remains visible throughout the user's session within that visit context.\n- The indicator is removed when the user returns to the current visit or exits the past visit context.\n- The display is visually distinct and does not interfere with existing patient header information.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Display active past visit details in the patient header whenever a user is operating within a historical visit context.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When a user enters a past visit context, the patient header displays the active visit information.",
+    "source": "stated",
+    "quote": "When a user enters a past visit context, the patient header displays the active visit information.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The displayed indicator clearly identifies the visit with key information such as the visit date and, where applicable, visit type.",
+    "source": "stated",
+    "quote": "The displayed information clearly identifies the visit (e.g., visit date and, where applicable, visit type).",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The past visit indicator remains visible throughout the user's session while within that visit context.",
+    "source": "stated",
+    "quote": "The indicator remains visible throughout the user's session within that visit context.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The indicator is removed when the user returns to the current visit or exits the past visit context.",
+    "source": "stated",
+    "quote": "The indicator is removed when the user returns to the current visit or exits the past visit context.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "The past visit indicator is visually distinct and does not obscure or interfere with existing patient header details.",
+    "source": "stated",
+    "quote": "The display is visually distinct and does not interfere with existing patient header information.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "patient header",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-bed-management-app/src/card-header/card-header.component.tsx",
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals-and-biometrics-header/vitals-header.extension.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Patient header and visit context management are standard components of the OpenMRS 3 patient chart.",
+  "testable": true,
+  "reason": "Clear UI acceptance criteria exist to verify the appearance and dismissal of the visit indicator in the patient header.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1868,
+   "output_tokens": 870,
+   "cost_usd": 0.0046635,
+   "cost_estimated": true,
+   "seconds": 156.65,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

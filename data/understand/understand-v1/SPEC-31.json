@@ -1,0 +1,120 @@
+{
+ "ticket": {
+  "key": "SPEC-31",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-31",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Automatically Waive Consultation Fees for Return Visits Within 7 Days",
+  "text": "Automatically Waive Consultation Fees for Return Visits Within 7 Days\n\nAutomatically waive consultation fees for return visits within 7 days to avoid overcharging patients for follow-up care.\n\nUser Story:\n\n- As a system admin, I want the system to handle recent visits (within 7 days) without generating a new consultation bill, so that we don't overcharge patients for follow-up care.\n\nFunctional Requirements:\n\n- Recent Visit Detection:\n  - System checks for previous visits within the last 7 days upon patient check-in\n  - If a recent visit exists:\n    - No new consultation bill is created\n    - Payment status displays: PAID (for consultation)\n    - Patient bypasses the cashier and proceeds directly to triage/consultation\n- New Services During Follow-Up Visit:\n  - If the clinician orders new services (lab tests, medications, procedures):\n    - The system creates a bill for these new services only\n    - Payment status changes to UNPAID (for new services)\n    - Patient must visit the cashier to pay before lab/pharmacy services\n- No New Services:\n  - If no new services are ordered, payment status remains PAID\n  - Patient completes visit without seeing the cashier\n- Unpaid Initial Visit:\n  - If the patient did not pay during the initial visit:\n    - The outstanding balance from the initial visit remains visible\n    - The new consultation fee is still waived\n    - Payment status shows UNPAID for initial visit items\n    - Patient sees the cashier to settle the previous balance + any new services",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Automatically waive consultation fees and mark consultation payment as paid for return visits within 7 days during patient check-in.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When a patient checks in who had a previous visit within the last 7 days, no new consultation bill is created.",
+    "source": "stated",
+    "quote": "System checks for previous visits within the last 7 days upon patient check-in\n  - If a recent visit exists:\n    - No new consultation bill is created",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When a return visit within 7 days is detected, payment status displays as PAID for consultation and the patient bypasses the cashier directly to triage or consultation.",
+    "source": "stated",
+    "quote": "Payment status displays: PAID (for consultation)\n    - Patient bypasses the cashier and proceeds directly to triage/consultation",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "If a clinician orders new services during the follow-up visit, a bill is created for only the new services and payment status updates to UNPAID for new services.",
+    "source": "stated",
+    "quote": "The system creates a bill for these new services only\n    - Payment status changes to UNPAID (for new services)\n    - Patient must visit the cashier to pay before lab/pharmacy services",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "If no new services are ordered during the follow-up visit, payment status remains PAID and the patient completes the visit without visiting the cashier.",
+    "source": "stated",
+    "quote": "If no new services are ordered, payment status remains PAID\n  - Patient completes visit without seeing the cashier",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "If the initial visit had an unpaid balance, that outstanding balance remains visible, payment status displays UNPAID for initial visit items, but the new consultation fee is still waived.",
+    "source": "stated",
+    "quote": "The outstanding balance from the initial visit remains visible\n    - The new consultation fee is still waived\n    - Payment status shows UNPAID for initial visit items",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "check-in",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/metrics/metrics-cards/checked-in-patients.extension.tsx",
+     "patient-management/packages/esm-appointments-app/src/appointments/common-components/checkin-button.component.tsx"
+    ]
+   },
+   {
+    "name": "billing-app",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/billing-dashboard/billing-dashboard.component.tsx"
+    ]
+   },
+   {
+    "name": "triage",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/current-visit/visit-details/triage-note.component.tsx",
+     "patient-management/packages/esm-service-queues-app/src/current-visit/visit-details/current-visit-details.component.tsx"
+    ]
+   },
+   {
+    "name": "consultation",
+    "role": "used",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [
+   "cashier",
+   "clinician",
+   "system admin"
+  ],
+  "questions": [
+   "\"consultation\" was not found in the code: which existing screen is meant?"
+  ],
+  "risks": [
+   {
+    "kind": "unknown-screen",
+    "detail": "not found in the code: consultation"
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Automating consultation fee waivers and handling billing statuses during check-in and return visits fits OpenMRS billing and patient management workflows.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1940,
+   "output_tokens": 802,
+   "cost_usd": 0.0044625,
+   "cost_estimated": true,
+   "seconds": 111.21,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

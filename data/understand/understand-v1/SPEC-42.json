@@ -1,0 +1,104 @@
+{
+ "ticket": {
+  "key": "SPEC-42",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-42",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Dispensing modal: \"Dispense all prescriptions\" fires before medication request data has loaded",
+  "text": "Dispensing modal: \"Dispense all prescriptions\" fires before medication request data has loaded\n\n## Summary\n\nThe On Prescription Filled modal (`src/fill-prescription/on-prescription-filled.modal.tsx`) renders as soon as the order basket is signed, but the medication request bundles are fetched asynchronously via `usePrescriptionDetails` (SWR). While that fetch is in-flight, `medicationRequestBundles` is an empty array.\n\nIf the user (or an automated test) clicks Dispense all prescriptions before the fetch resolves, `onConfirm()` iterates over an empty array and makes no dispense or fulfiller-status requests. `close()` is still called, so the modal dismisses silently and the prescriptions are never marked as dispensed.\n\n## Steps to reproduce\n\n1. Open the dispensing app and start a paper prescription.\n2. Fill and sign the order.\n3. In the Dispense prescriptions modal, click Dispense all prescriptions immediately (within ~1–2 s of the modal appearing).\n4. Observe: no `MedicationDispense` or `MedicationRequest` PATCH requests are sent; the prescription remains Active.\n\n## Root cause\n\n`usePrescriptionDetails` returns `medicationRequestBundles: []` until the SWR fetch completes. The confirm button has no guard against this loading state.\n\n## Fix\n\nDisable the Dispense all prescriptions button while `isLoading` from `usePrescriptionDetails` is `true`:\n\n```tsx\nconst { medicationRequestBundles, isLoading: isLoadingPrescriptionDetails } = usePrescriptionDetails(encounterUuid);\n// ...\n<Button disabled={isSubmitting || isLoadingPrescriptionDetails} onClick={() => onConfirm()}>\n  {t('dispenseAllPrescriptions', 'Dispense all prescriptions')}\n</Button>\n```\n\nThis also resolves intermittent e2e test failures where Playwright clicks the button before the data arrives.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Disable the \"Dispense all prescriptions\" button in the dispensing modal while medication request data is still loading.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The \"Dispense all prescriptions\" button is disabled while prescription details are loading.",
+    "source": "stated",
+    "quote": "Disable the Dispense all prescriptions button while isLoading from usePrescriptionDetails is true",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The \"Dispense all prescriptions\" button becomes enabled once prescription details have finished loading (provided the form is not submitting).",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Clicking \"Dispense all prescriptions\" after data loads triggers the dispense requests and marks the prescriptions as dispensed.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Dispense prescriptions modal",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/prescriptions/prescriptions-table.component.tsx",
+     "dispensing-app/src/fill-prescription/fill-prescription-button.component.tsx"
+    ]
+   },
+   {
+    "name": "Dispense all prescriptions button",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/prescriptions/prescriptions-table.component.tsx",
+     "dispensing-app/src/fill-prescription/fill-prescription-button.component.tsx"
+    ]
+   },
+   {
+    "name": "Dispensing app",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/dispensing-tiles/dispensing-tiles.resource.tsx",
+     "dispensing-app/src/dispensing-link.component.tsx"
+    ]
+   },
+   {
+    "name": "order basket",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/order-basket/order-basket.component.tsx",
+     "patient-chart/packages/esm-patient-orders-app/src/order-basket/general-order-type/general-order-panel.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Relates directly to dispensing prescriptions within the OpenMRS 3 dispensing app.",
+  "testable": true,
+  "reason": "The button's disabled state during asynchronous data loading and subsequent dispense actions can be verified in the browser.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2021,
+   "output_tokens": 938,
+   "cost_usd": 0.00503325,
+   "cost_estimated": true,
+   "seconds": 228.23,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

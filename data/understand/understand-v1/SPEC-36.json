@@ -1,0 +1,97 @@
+{
+ "ticket": {
+  "key": "SPEC-36",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-36",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Login crashes with uncaught TypeError when no Login Locations are configured, user stuck on location picker",
+  "text": "Login crashes with uncaught TypeError when no Login Locations are configured, user stuck on location picker\n\nWhen an OpenMRS instance has no Login Locations configured, the location picker screen crashes with an uncaught `TypeError` when the user submits, leaving them permanently stuck in a loading state. Login never completes.\n\nSteps to reproduce\n\n1. Deploy an instance with zero locations tagged \"Login Location\" (e.g. `3.7.x-no-demo` Docker image)\n2. Log in as any user\n3. On the location picker screen, the location list shows \"No results to display\"\n4. Click Submit\n\nObserved behavior\n\n- The Submit button enters a permanent \"Submitting\" spinner state, alongside a \"Loading\" indicator under the empty results list — neither resolves\n- A visible error toast appears: `TypeError: can't access property \"id\", n is undefined`\n- The user is stuck on this screen with no way to proceed — not logged in, no session location set, no path forward\n\nRoot cause\nTwo regressions from [PR reference removed]:\n\n1. `useLocationCount` bug — `location-picker.resource.ts:91`. The tag filter is never applied because `url.concat()` returns a new string without mutating the original `url`, so the count query fetches all locations, not just those tagged \"Login Location.\"\n2. Lost error handling — [PR reference removed] rewrote the location picker as a new component (`location-picker-view.component.tsx`) but didn't carry over [PR reference removed] error handling (`errorFetchingLoginLocations` check, `ActionableNotification` UI).\n3. Unguarded submit with no selection — the crash (`can't access property \"id\", n is undefined`) suggests the submit handler proceeds to call something like `changeLocation(selectedLocation.id)` even when no location is selected/available, rather than disabling submission or handling the empty case. Needs confirmation against source.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 2 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Prevent the location picker from crashing with an uncaught error and hanging in an infinite loading state when no login locations are configured or selected upon submit.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When no login locations are configured or selected, attempting to submit on the location picker screen must not throw an uncaught TypeError or hang in a permanent submitting/loading state.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When no login locations are available, the location picker should either disable submission or present a clear error notification indicating that login cannot proceed.",
+    "source": "inferred",
+    "quote": "",
+    "status": "unclear"
+   }
+  ],
+  "screens": [
+   {
+    "name": "location picker screen",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-login-app/src/location-picker/location-picker.resource.ts",
+     "core/packages/framework/esm-styleguide/src/location-picker/location-picker.resource.ts"
+    ]
+   },
+   {
+    "name": "Submit button",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-item-actions/edit-bill-item.modal.tsx",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.component.tsx"
+    ]
+   },
+   {
+    "name": "login screen",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-login-app/src/login.resource.ts",
+     "core/packages/apps/esm-login-app/src/declarations.d.ts"
+    ]
+   }
+  ],
+  "roles": [
+   "user"
+  ],
+  "questions": [
+   "Should the Submit button be disabled when no login location is selected, or should an actionable error notification be displayed explaining that no location is configured?"
+  ],
+  "risks": [
+   {
+    "kind": "vague",
+    "detail": "The ticket analyzes the root cause but does not definitively specify the intended UI behavior when no locations are available (e.g. disabling the Submit button vs showing an actionable notification)."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Login and location picker workflows are standard core capabilities in OpenMRS 3.",
+  "testable": true,
+  "reason": "Testers can log in to an instance lacking configured login locations and verify that submitting does not produce a crash toast or an endless loading spinner.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2038,
+   "output_tokens": 1329,
+   "cost_usd": 0.00651225,
+   "cost_estimated": true,
+   "seconds": 349.29,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

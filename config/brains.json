@@ -3,16 +3,19 @@
   "brains": {
     "llm": {
       "api": "openai-chat",
-      "provider": "openrouter",
-      "base_url": "https://openrouter.ai/api/v1",
-      "model": "google/gemini-3.8-flash",
-      "api_key_env": "OPENROUTER_API_KEY",
+      "provider": "google",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "model": "gemini-3.8-flash",
+      "api_key_env": "GEMINI_API_KEY",
       "structured_outputs": true,
       "context_window": 1048576,
       "timeout_seconds": 180,
       "http_retries": 5,
-      "extra_body": {"usage": {"include": true}},
-      "extra_headers": {"X-Title": "SpecBridge"}
+      "price_usd_per_mtok": {
+        "input": 0.75,
+        "output": 3.75
+      },
+      "note": "Gemini called directly through Google's OpenAI-compatible endpoint (key from https://aistudio.google.com/apikey). Google does not report cost, so it is estimated from price_usd_per_mtok (list price, thinking counted as output); calls on the free tier actually cost $0."
     },
     "slm": {
       "api": "openai-chat",

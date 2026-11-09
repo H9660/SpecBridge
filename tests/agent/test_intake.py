@@ -173,7 +173,7 @@ def test_rich_text_keeps_structure():
     )
     text, _ = ticket_text.adf_to_text(d)
     assert text == ("## Acceptance criteria\n\n3. First\n4. Second\n\n- Parent\n  - Child\n\nLine one\nline two\n\n"
-                    "```\nconst a = 1;\nconst b = 2;\n```\n\n> Quoted\n\n---\n\n| Field | Rule |\n| BP | <= 250 |")
+                    "```ts\nconst a = 1;\nconst b = 2;\n```\n\n> Quoted\n\n---\n\n| Field | Rule |\n| --- | --- |\n| BP | <= 250 |")
 
 
 def test_links_mentions_images_and_marks():
@@ -186,9 +186,10 @@ def test_links_mentions_images_and_marks():
             {"type": "mediaSingle", "content": [{"type": "media", "attrs": {"id": "img"}}]},
             {"type": "blockCard", "attrs": {"url": "https://example.com"}})
     text, counts = ticket_text.adf_to_text(d)
-    assert text == "See the docs, ask (someone), run `yarn test` now [link] 😄 IN REVIEW\n\n[link]"
-    assert "evil.example" not in text and "Dr Who" not in text and "talk.openmrs" not in text
-    assert counts == {"attachments": 1, "mentions": 1, "links": 3, "unknown": 0}
+    assert text == "See the docs, ask (someone), run `yarn test` now [link: talk.openmrs.org] 😄 IN REVIEW\n\n[link: example.com]"
+    assert "evil.example" not in text and "Dr Who" not in text and "/t/1" not in text   # card host kept, path dropped
+    assert {k: counts[k] for k in ("attachments", "mentions", "links", "unknown")} == \
+        {"attachments": 1, "mentions": 1, "links": 3, "unknown": 0}
 
 
 def test_unknown_elements_keep_their_text():
@@ -274,6 +275,8 @@ def test_instructions_to_the_ai_are_found(line):
     "Validation rules apply to every field.",
     "The tool tip shows the drug name.",
     "Approved orders appear in the queue.",
+    "QA sign-off required before release.",
+    "Show the admin password reset link on the login page.",
 ])
 def test_normal_lines_are_not_flagged(line):
     assert ticket_text.instruction_lines(line) == []
@@ -318,7 +321,8 @@ def test_spec_69_informal_mixed_language_is_unchanged():
 
 def test_spec_55_link_target_is_dropped():
     ticket = run_intake("SPEC-55")
-    assert "Talk thread about it - [link]" in ticket["text"] and "talk.openmrs.org" not in ticket["text"]
+    assert "Talk thread about it - [link: talk.openmrs.org]" in ticket["text"]
+    assert "generic-o3-forms-printing" not in ticket["text"]   # the host is kept, the path is not
 
 
 @pytest.mark.parametrize("path", sorted(FIXTURES.glob("*.json")), ids=lambda p: p.stem)

@@ -61,6 +61,26 @@ def main(argv=None):
         print(f"text:   {len(ticket['text']):,} characters")
         flags = ticket["flags"]
         print("flags:  " + ("none" if not flags else "\n        ".join(f"{f['kind']}: {f['detail']}" for f in flags)))
+    u = result.state.get("understanding")
+    if u:
+        crit = u["criteria"]
+        print(f"intent: {u['intent']}")
+        print(f"criteria: {len(crit)} ({sum(c['source'] == 'stated' for c in crit)} stated, "
+              f"{sum(c['source'] == 'inferred' for c in crit)} inferred, "
+              f"{sum(c['status'] != 'ok' for c in crit)} conflicting/unclear)")
+        for c in crit:
+            print(f"  {c['id']} [{c['source']}{'' if c['status'] == 'ok' else ', ' + c['status']}] {c['text']}")
+        print("screens: " + (", ".join(f"{s['name']} ({s['role']}, "
+                                         f"{'in code' if s['found_in_code'] else 'NOT in code' if s['found_in_code'] is False else 'unchecked'})"
+                                         for s in u["screens"]) or "none"))
+        print("risks:  " + (", ".join(r["kind"] for r in u["risks"]) or "none") + f"   domain: {u['domain_fit']}")
+        for q in u["questions"]:
+            print(f"  ? {q}")
+        print(f"testable: {'yes' if u['testable'] else 'NO'} - {u['reason']}")
+        m = u["meta"]
+        print(f"AI:     {m['model']}, {m['input_tokens'] + m['output_tokens']} tokens, "
+              f"{'~' if m.get('cost_estimated') else ''}${m['cost_usd']:.4f}, "
+              f"{m['seconds']} s" + (", own key (BYOK)" if m.get("byok") else ""))
     print(f"run:    {result.run_id}")
     print(f"status: {result.status}" + (f" ({result.message})" if result.message else ""))
     print(f"record: {result.record_path}")

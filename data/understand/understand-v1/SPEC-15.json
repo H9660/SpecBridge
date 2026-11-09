@@ -1,0 +1,103 @@
+{
+ "ticket": {
+  "key": "SPEC-15",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-15",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Persist user-selected start date on medication orders",
+  "text": "Persist user-selected start date on medication orders\n\n## Problem\n\nThe Start date field in the drug order form is collected from the user but is not included in the Order POST payload. As a result, the selected date has no effect when saving NEW, RENEW, or REVISE medication orders: the backend defaults dateActivated to the current date when omitted, so the user's choice is silently discarded.\n\n## Scope\n\nThis ticket covers wiring the form's Start date through to dateActivated for NEW, RENEW, and REVISE flows, including the encounter-handling required for the backend's `dateActivated >= encounterDatetime` and REVISE `+1s` constraints to hold.\n\n- NEW: the user-selected date is sent as dateActivated. The encounter created in the same POST is backdated to the earliest selected date so the encounter constraint holds.\n- RENEW: posted as a new order with previousOrder, on a freshly created encounter (per backend semantics: a renewal is a new prescription event, not a continuation). The new encounter's encounterDatetime tracks the chosen start date. The form does not inherit dateActivated from the previous order.\n- REVISE: the user-selected date is sent as dateActivated against the previous order's existing encounter. The date picker enforces a minimum of `previous.dateActivated + 1s` so the backend's `previous.dateStopped = new.dateActivated - 1s` computation produces a valid order chain.\n- DISCONTINUE: unchanged from current main (preserves the original order's dateActivated; no dateActivated sent in payload).\n\n## Out of Scope (deferred)\n\nThe following are deferred to follow-up tickets or #2973:\n\n- Future-dated orders. These are modeled with scheduledDate + urgency ONSCHEDULEDDATE, not by setting a future dateActivated (the backend rejects future values during validation). Belongs to #2973.\n- Time-of-day picker bug. The picker's minDate uses the visit's exact startDatetime (a Date with time component), but the picker greys out at day-level and the picked Date has time 00:00 in local TZ. So when a visit started at e.g. 09:33, the picker visually allows that day but the picked Date falls before the visit start, causing the encounter POST to fail with `Encounter.datetimeShouldBeInVisitDatesRange`. Cleanest fix is clamp-on-submit (round picker minDate to start-of-day, then clamp the picked Date to `max(picked, visit.startDatetime)` and for REVISE also `previous.dateActivated + 1s`).\n- Consolidation of `orderEncounterType` config currently duplicated between `esm-patient-medications-app` and `esm-patient-orders-app` into `esm-patient-common-lib`.\n- Field label rename ('Start Date' to 'Activation Date'). Deserves separate UX and translation review.\n\n## Acceptance Criteria\n\n- [x] On NEW, RENEW, and REVISE, the user-selected Start date is sent as dateActivated in the POST payload.\n- [x] When the field is left at its default, payload behavior is unchanged from current main (no dateActivated sent; backend defaults to now).\n- [x] DISCONTINUE preserves the original order's dateActivated (unchanged from current main).\n- [x] buildMedicationOrder does not pre-fill the form's startDate from the previous order's dateActivated for RENEW or REVISE (no silent backdating when the clinician does not touch the date field).\n- [x] RENEW creates a fresh encounter with encounterDatetime tracking the chosen start date.\n- [x] REVISE date picker enforces a minimum of `previous.dateActivated + 1s`.\n- [x] Tests cover NEW/RENEW/REVISE (date is sent), DISCONTINUE (preserves), buildMedicationOrder regression (RENEW/REVISE do not inherit), and the pure helpers (getEarliestStartDate, getStartDateMinimum, postOrderOnNewEncounter).\n\n## Related\n\n- Prior PR attempt: #2241\n- Current PR: #3198\n- Future scheduling work: #2973",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Ensure that user-selected start dates on NEW, RENEW, and REVISE medication orders are saved and reflected in the order's activation date.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "On NEW, RENEW, and REVISE orders, the user-selected Start date is sent as dateActivated in the POST payload.",
+    "source": "stated",
+    "quote": "On NEW, RENEW, and REVISE, the user-selected Start date is sent as dateActivated in the POST payload.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When the Start date field is left at its default, no dateActivated is sent in the payload and the backend defaults to current time.",
+    "source": "stated",
+    "quote": "When the field is left at its default, payload behavior is unchanged from current main (no dateActivated sent; backend defaults to now).",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "DISCONTINUE preserves the original order's dateActivated without sending dateActivated in the payload.",
+    "source": "stated",
+    "quote": "DISCONTINUE preserves the original order's dateActivated (unchanged from current main).",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The Start date field is not pre-filled with the previous order's dateActivated when performing a RENEW or REVISE.",
+    "source": "stated",
+    "quote": "buildMedicationOrder does not pre-fill the form's startDate from the previous order's dateActivated for RENEW or REVISE (no silent backdating when the clinician does not touch the date field).",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "RENEW orders create a fresh encounter with encounterDatetime set to match the chosen start date.",
+    "source": "stated",
+    "quote": "RENEW creates a fresh encounter with encounterDatetime tracking the chosen start date.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "The date picker on a REVISE order enforces a minimum selectable date of 1 second after the previous order's dateActivated.",
+    "source": "stated",
+    "quote": "REVISE date picker enforces a minimum of `previous.dateActivated + 1s`.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "drug order form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-medications-app/src/add-drug-order/drug-order-form.component.tsx",
+     "patient-chart/packages/esm-patient-medications-app/src/add-drug-order/add-drug-order.workspace.tsx"
+    ]
+   },
+   {
+    "name": "date picker",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/framework/esm-styleguide/src/datepicker/date-picker-icon.component.tsx",
+     "core/packages/framework/esm-styleguide/src/datepicker/openmrs-date-picker.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "clinician"
+  ],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Applies directly to medication order entry and management within OpenMRS patient charts.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2539,
+   "output_tokens": 1076,
+   "cost_usd": 0.00593925,
+   "cost_estimated": true,
+   "seconds": 28.46,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

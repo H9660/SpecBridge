@@ -1,0 +1,84 @@
+{
+ "ticket": {
+  "key": "SPEC-35",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-35",
+  "type": "Story",
+  "status": "To Do",
+  "title": "UI doesn't make it clear bill must be finalized before payment",
+  "text": "UI doesn't make it clear bill must be finalized before payment\n\nOn the Billing screen, the \"Process payment\" button is disabled until the bill is finalized via the \"Finalize bill\" action. There is currently no visible indication of this dependency, so cashiers attempt to process payment first and get stuck without understanding why.\n\nThis was discussed during the coffee break.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Provide a clear visual indication on the Billing screen that a bill must be finalized before payment can be processed.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "A visible indication is shown to explain that the bill must be finalized before the Process payment button can be used.",
+    "source": "inferred",
+    "quote": "",
+    "status": "unclear"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Billing screen",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/billing-dashboard/billing-dashboard.component.tsx"
+    ]
+   },
+   {
+    "name": "Process payment",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/invoice/payments/payments.component.tsx",
+     "billing-app/src/billing.resource.ts"
+    ]
+   },
+   {
+    "name": "Finalize bill",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/components/order-price-details.component.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "cashier"
+  ],
+  "questions": [
+   "What visual indicator should be added (for example, a tooltip on hover over the disabled button, helper text beneath it, or an alert banner)?",
+   "What exact message copy should be displayed to the user?"
+  ],
+  "risks": [
+   {
+    "kind": "vague",
+    "detail": "The ticket describes a usability problem discussed informally but does not specify the intended UI solution or requirements."
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Billing and payment processing are standard features in the OpenMRS 3 billing application.",
+  "testable": false,
+  "reason": "no checkable acceptance criteria could be found or inferred",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1685,
+   "output_tokens": 1679,
+   "cost_usd": 0.00756,
+   "cost_estimated": true,
+   "seconds": 703.87,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

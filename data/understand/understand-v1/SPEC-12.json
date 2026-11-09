@@ -1,0 +1,101 @@
+{
+ "ticket": {
+  "key": "SPEC-12",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-12",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Improve keyboard access and edit wording in the conditions form",
+  "text": "Improve keyboard access and edit wording in the conditions form\n\nCondition search results are clickable but can’t be reached or selected using the keyboard. The workspace also shows “Record condition” when editing an existing condition.\n\nCan we make the search results keyboard accessible and update the title to reflect whether we’re recording or editing a condition?\n\n#### Acceptance criteria:\n\n- Search results support keyboard navigation and selection, with a visible focus indicator.\n- Focus returns to the search input after selection, and the selected condition’s name remains in the input.\n- Escape returns focus to the search input without selecting a result.\n- The workspace shows “Record condition” when creating and “Edit condition” when editing.\n- Mouse selection continues to work.\n- Keyboard behavior and titles are validated on desktop and tablet.\n\nRelated: openmrs/openmrs-esm-patient-chart#3645 addresses similar issues in visit notes.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Enable keyboard navigation for condition search results and dynamic workspace titles for recording versus editing conditions.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Condition search results support keyboard navigation and selection, displaying a visible focus indicator.",
+    "source": "stated",
+    "quote": "Search results support keyboard navigation and selection, with a visible focus indicator.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "After selecting a search result, focus returns to the search input and the selected condition's name remains populated in the input.",
+    "source": "stated",
+    "quote": "Focus returns to the search input after selection, and the selected condition’s name remains in the input.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Pressing Escape returns focus to the search input without selecting any condition result.",
+    "source": "stated",
+    "quote": "Escape returns focus to the search input without selecting a result.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The workspace title displays \"Record condition\" when creating a new condition and \"Edit condition\" when editing an existing condition.",
+    "source": "stated",
+    "quote": "The workspace shows “Record condition” when creating and “Edit condition” when editing.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Selecting a condition result with a mouse continues to work as expected.",
+    "source": "stated",
+    "quote": "Mouse selection continues to work.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "Keyboard navigation behavior and workspace titles work on both desktop and tablet viewports.",
+    "source": "stated",
+    "quote": "Keyboard behavior and titles are validated on desktop and tablet.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "conditions form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-conditions-app/src/conditions/conditions.resource.ts",
+     "patient-chart/packages/esm-patient-conditions-app/src/conditions/conditions-widget.component.tsx"
+    ]
+   },
+   {
+    "name": "workspace",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-ward-app/src/ward-workspace/cancel-admission-request-workspace/ward-patient-cancel-admission-request.workspace.tsx",
+     "patient-management/packages/esm-ward-app/src/ward-workspace/cancel-admission-request-workspace/cancel-admission-request.workspace.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Recording and editing conditions is standard functionality within the OpenMRS patient-chart module.",
+  "testable": true,
+  "reason": "The acceptance criteria define clear, testable UI keyboard interactions, focus management, and title text changes in the browser.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1803,
+   "output_tokens": 1045,
+   "cost_usd": 0.005271,
+   "cost_estimated": true,
+   "seconds": 18.52,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

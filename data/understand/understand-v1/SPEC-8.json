@@ -1,0 +1,92 @@
+{
+ "ticket": {
+  "key": "SPEC-8",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-8",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Unhandled rejections pass a raw Error into the toast description, which React cannot render",
+  "text": "Unhandled rejections pass a raw Error into the toast description, which React cannot render\n\n## Background\n\n`esm-error-handling`'s global handlers pass their raw argument straight into the toast:\n\n```ts\nwindow.onunhandledrejection = function (event: PromiseRejectionEvent) {\n  dispatchToastShown({ description: event.reason ?? '…', kind: 'error', title: 'Error' });\n};\n```\n\n`event.reason` is normally an `Error`, and it reaches the toast's `subtitle` as an object. React cannot render an object as a child, so the toast fails to render and takes its subtree down with it — meaning the user sees nothing at all for an error that was meant to be surfaced to them.\n\nObserved while running the Angular form engine without zone.js, where a previously swallowed rejection became a real `unhandledrejection`. The console showed `Invalid prop 'subtitle' supplied to 'ActionableNotification', expected a ReactNode` followed by `Objects are not valid as a React child (found: [object Error])`.\n\n`window.onerror` alongside it takes the same shape and should be checked for the same problem.\n\n## Requested change\n\nCoerce whatever arrives to a string before it reaches the toast — the module already has `ensureErrorObject()`, whose `.message` is the natural choice — so that any rejection reason produces a readable notification instead of an unrenderable one.\n\n## Acceptance criteria\n\n- An unhandled rejection whose reason is an `Error` produces a toast showing its message.\n- The same holds for a reason that is a string, a plain object, `null` or `undefined`.\n- No React rendering error is produced in any of those cases, and the toast subtree survives.\n- `window.onerror` is covered by the same handling.\n- Automated tests cover each reason shape above.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Ensure error toasts display readable message strings instead of crashing when handling Error objects, strings, plain objects, null, or undefined rejection reasons.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "An unhandled promise rejection with an Error reason displays a toast notification containing the error message.",
+    "source": "stated",
+    "quote": "An unhandled rejection whose reason is an Error produces a toast showing its message.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "An unhandled promise rejection where reason is a string, plain object, null, or undefined displays a readable toast notification.",
+    "source": "stated",
+    "quote": "The same holds for a reason that is a string, a plain object, null or undefined.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "No React rendering error is thrown and the toast notification subtree remains intact across all reason types.",
+    "source": "stated",
+    "quote": "No React rendering error is produced in any of those cases, and the toast subtree survives.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Global window.onerror errors are handled identically to unhandled promise rejections.",
+    "source": "stated",
+    "quote": "window.onerror is covered by the same handling.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Automated tests cover all rejection reason shapes (Error, string, plain object, null, undefined).",
+    "source": "stated",
+    "quote": "Automated tests cover each reason shape above.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "toast notification",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-common-lib/src/orders/showOrderSuccessToast.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "What fallback text should be displayed in the toast notification when the error reason is null or undefined?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Core error handling and toast notifications are part of the core OpenMRS 3 application shell.",
+  "testable": true,
+  "reason": "Testers can verify in the browser that unhandled errors and rejections trigger properly rendered toast notifications rather than React runtime errors.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2019,
+   "output_tokens": 819,
+   "cost_usd": 0.0045855,
+   "cost_estimated": true,
+   "seconds": 38.78,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

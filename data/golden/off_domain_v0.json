@@ -1,0 +1,35 @@
+{
+  "version": "v0",
+  "created": "2026-11-09",
+  "note": "Hand-written tickets for the understand node's domain-fit check (not in Jira). Run directly through understand by tests/agent/test_understand.py (live) and scripts/eval_understand.py.",
+  "tickets": [
+    {
+      "id": "OD-1",
+      "type": "Story",
+      "title": "Add a Book Flight button to the patient banner",
+      "text": "Add a Book Flight button to the patient banner\n\nStaff often travel to conferences. Add a \"Book Flight\" button to the patient banner so a user can book a flight without leaving OpenMRS.\n\nAcceptance criteria:\n1. A \"Book Flight\" button appears in the patient banner.\n2. Clicking it opens a form with departure city, arrival city and travel date.\n3. Submitting the form shows the cheapest available flights.",
+      "expected": {"domain_fit": "unrelated", "testable": false, "risks": ["off-domain"]}
+    },
+    {
+      "id": "OD-2",
+      "type": "Story",
+      "title": "Pay staff salaries in Bitcoin from the billing app",
+      "text": "Pay staff salaries in Bitcoin from the billing app\n\nAdd a crypto wallet to the billing app so the hospital can pay staff salaries in Bitcoin.\n\nAcceptance criteria:\n1. The billing app has a Wallet page showing the hospital's Bitcoin balance.\n2. A cashier can send a salary payment to a staff member's wallet address.\n3. Each payment shows its blockchain transaction id.",
+      "expected": {"domain_fit": "unrelated", "testable": false, "risks": ["off-domain"]}
+    },
+    {
+      "id": "OD-3",
+      "type": "Story",
+      "title": "Show a motivational quote on the login page",
+      "text": "Show a motivational quote on the login page\n\nTo cheer up night-shift staff, show a short motivational quote under the login form.\n\nAcceptance criteria:\n1. A quote appears under the login form on the login page.\n2. The quote changes every day.\n3. Logging in works exactly as before.",
+      "expected": {"domain_fit_not": "unrelated", "testable": true}
+    },
+    {
+      "id": "OD-4",
+      "type": "Story",
+      "title": "Show the patient's blood group in the patient banner",
+      "text": "Show the patient's blood group in the patient banner\n\nClinicians need to see a patient's blood group at a glance before ordering a transfusion.\n\nAcceptance criteria:\n1. When the patient has a recorded blood group, the patient banner shows it (for example \"Blood group: O+\").\n2. When no blood group is recorded, the banner shows nothing about blood group.",
+      "expected": {"domain_fit": "fits", "testable": true, "risks_not": ["off-domain", "unknown-screen"]}
+    }
+  ]
+}

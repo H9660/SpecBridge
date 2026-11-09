@@ -1,0 +1,110 @@
+{
+ "ticket": {
+  "key": "SPEC-10",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-10",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Vitals and biometrics chart view shows a loading spinner and causes layout jump on first switch",
+  "text": "Vitals and biometrics chart view shows a loading spinner and causes layout jump on first switch\n\n## Description\n\nThe vitals and biometrics widgets load their chart code lazily, so the first time a user switches from the table view to the chart view, there's a delay while the chart code downloads. During that delay the widget shows a single-line loading indicator, which collapses the card to one row. Widgets below it jump up, then get pushed back down when the chart appears. This is noticeable on slower connections and is disorienting, especially for keyboard users where focusing and activating the switcher happen almost together.\n\nThe delay itself is also avoidable in most cases: the chart code could be ready by the time the user actually clicks, since there's a clear signal of intent beforehand (hovering or focusing the switcher).\n\n## Acceptance criteria\n\n- Hovering over or focusing the table/chart switcher begins preparing the chart view so that, in the common case, clicking it shows the chart with no visible loading state.\n- If preparation fails, no error toast or unhandled error appears to the user, and switching to the chart view still works (it retries).\n- When the chart is not yet ready, the loading placeholder matches the height of the final chart view so the card and the widgets below it do not shift.\n- The loading placeholder remains accessible to screen readers (announced as loading / progress).\n- Applies to both the vitals widget and the biometrics widget.\n- Card height is identical in loading state and rendered state.\n\n## Related PR\n\n[link removed]",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Prevent layout shifts and reduce loading delays when switching between table and chart views in the vitals and biometrics widgets.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Hovering over or focusing the table/chart switcher prepares the chart view ahead of time so clicking it typically displays the chart without a visible loading state.",
+    "source": "stated",
+    "quote": "Hovering over or focusing the table/chart switcher begins preparing the chart view so that, in the common case, clicking it shows the chart with no visible loading state.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "If pre-fetching/preparation fails, no error toast or unhandled error is shown to the user, and attempting to switch to the chart view still retries and works.",
+    "source": "stated",
+    "quote": "If preparation fails, no error toast or unhandled error appears to the user, and switching to the chart view still works (it retries).",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "When the chart is not yet ready, the placeholder matches the rendered chart view's height to prevent the card and surrounding widgets from shifting.",
+    "source": "stated",
+    "quote": "When the chart is not yet ready, the loading placeholder matches the height of the final chart view so the card and the widgets below it do not shift.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The loading placeholder is accessible to screen readers by announcing progress/loading state.",
+    "source": "stated",
+    "quote": "The loading placeholder remains accessible to screen readers (announced as loading / progress).",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "The preload and fixed-height placeholder behaviours apply to both the vitals widget and the biometrics widget.",
+    "source": "stated",
+    "quote": "Applies to both the vitals widget and the biometrics widget.",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "The widget card height remains identical between its loading state and its fully rendered chart state.",
+    "source": "stated",
+    "quote": "Card height is identical in loading state and rendered state.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "vitals widget",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals/vitals-chart.component.tsx",
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals-biometrics-form/vitals-biometrics-input.component.tsx"
+    ]
+   },
+   {
+    "name": "biometrics widget",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-vitals-app/src/biometrics/biometrics-config-schema.ts",
+     "patient-chart/packages/esm-patient-vitals-app/src/vitals-biometrics-form/exported-vitals-biometrics-form.workspace.tsx"
+    ]
+   },
+   {
+    "name": "table/chart switcher",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-primary-navigation-app/src/components/user-panel-switcher-item/user-panel-switcher.component.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/visit-context/visit-context-switcher.modal.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "The vitals and biometrics widgets are standard components of the OpenMRS 3 patient chart.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1937,
+   "output_tokens": 1116,
+   "cost_usd": 0.00563775,
+   "cost_estimated": true,
+   "seconds": 152.05,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -1,0 +1,20 @@
+[
+ {
+  "key": "SPEC-12",
+  "group": "real",
+  "ok": true,
+  "problems": [],
+  "testable": true,
+  "domain_fit": "fits",
+  "criteria": 6,
+  "stated": 6,
+  "inferred": 0,
+  "questions": 0,
+  "risks": [],
+  "unknown_screens": [],
+  "cost": 0.00479475,
+  "seconds": 71.8,
+  "prompt_version": "understand-v1 (2026-11-09)",
+  "model": "gemini-3.8-flash"
+ }
+]

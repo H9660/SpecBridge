@@ -1,6 +1,6 @@
 """The main LangGraph graph (ARCHITECTURE.md, docs/architecture.drawio), built node by node.
 
-Now: START -> intake -> END. `run_ticket` is START: it checks the request and the brain, creates the
+Now: START -> intake -> understand -> END. `run_ticket` is START: it checks the request and the brain, creates the
 run, runs the graph with a checkpointer, and writes the run record however the run ends.
 
 Nodes are plain functions `node(state, settings)`; `build_graph` takes replacements, which is how
@@ -18,10 +18,11 @@ from langgraph.graph import END, START, StateGraph
 
 from specbridge.agent import preflight, run_record
 from specbridge.agent.limits import load_settings
-from specbridge.agent.nodes import intake
+from specbridge.agent.nodes import intake, understand
 from specbridge.agent.state import ENABLED_MODES, MODES, SpecBridgeState, add_spent
 
-DEFAULT_NODES = {"intake": intake.node}
+DEFAULT_NODES = {"intake": intake.node, "understand": understand.node}
+ORDER = ("intake", "understand")   # grows as nodes are built
 MAX_REF_CHARS = 2000
 RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
@@ -55,9 +56,10 @@ def build_graph(nodes=None, settings=None, checkpointer=None, interrupt_before=N
     settings = settings or load_settings()
     fns = {**DEFAULT_NODES, **(nodes or {})}
     g = StateGraph(SpecBridgeState)
-    g.add_node("intake", _main_node("intake", fns["intake"], settings))
-    g.add_edge(START, "intake")
-    g.add_edge("intake", END)
+    for name in ORDER:
+        g.add_node(name, _main_node(name, fns[name], settings))
+    for a, b in zip((START, *ORDER), (*ORDER, END)):
+        g.add_edge(a, b)
     return g.compile(checkpointer=checkpointer, interrupt_before=interrupt_before)
 
 

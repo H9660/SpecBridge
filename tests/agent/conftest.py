@@ -8,10 +8,11 @@ PROJECT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT))
 
 from specbridge.agent.limits import Settings  # noqa: E402
-from specbridge.agent.nodes import intake  # noqa: E402
+from specbridge.agent.nodes import intake, understand  # noqa: E402
 from specbridge.atlassian import JiraError  # noqa: E402
+from specbridge.brain import BrainError, Reply  # noqa: E402
 
-FAKE_KEY = "sk-or-v1-TESTKEY-must-never-appear"
+FAKE_KEY = "AIza-TESTKEY-must-never-appear"
 FAKE_JIRA_TOKEN = "jira-token-must-never-appear"
 FIXTURES = Path(__file__).parent / "fixtures" / "jira"
 JIRA_ENV = {"ATLASSIAN_SITE": "https://rooks101.atlassian.net", "ATLASSIAN_EMAIL": "tester@example.com",
@@ -43,8 +44,50 @@ class FakeJira:
         raise JiraError(f"GET /rest/api/3/issue/{key} -> 404", 404)
 
 
+def plain_answer(**changes):
+    """A valid understand answer: one stated criterion, one known screen, fits, testable."""
+    return {"intent": "Make the thing work", "criteria": [{"text": "The thing works", "source": "stated",
+                                                          "quote": "", "status": "ok"}],
+            "screens": [{"name": "Patient chart", "role": "changed"}], "roles": ["clinician"], "questions": [],
+            "risks": [], "domain_fit": "fits", "domain_reason": "clinical feature", "testable": True,
+            "reason": "clear criteria", **changes}
+
+
+class FakeBrain:
+    """Stands in for the AI: returns `answer` (a dict, or a function of the user prompt) or raises `error`."""
+
+    def __init__(self, answer=None, error=None, cost=0.0012):
+        self.answer, self.error, self.cost = answer if answer is not None else plain_answer(), error, cost
+        self.calls = []
+
+    def ask_json(self, prompt, schema, system=None, max_tokens=4000, temperature=0.0):
+        self.calls.append({"prompt": prompt, "system": system, "schema": schema, "max_tokens": max_tokens})
+        if self.error:
+            raise self.error
+        data = self.answer(prompt) if callable(self.answer) else self.answer
+        return Reply(text="{}", data=data, brain="llm", provider="google", model="fake/model",
+                     input_tokens=900, output_tokens=300, cost_usd=self.cost, seconds=0.01, attempts=1, byok=False)
+
+
+def fake_understand(brain=None, lookup=None):
+    """understand with a fake brain; lookup None = every screen found, or a function name -> [(repo, path)]."""
+    return understand.make_node(brain=brain or FakeBrain(), env={},
+                                lookup=lookup or (lambda name: [("patient-chart", "src/x.tsx")]))
+
+
 def fake_intake(jira=None):
     return intake.make_node(env=JIRA_ENV, client=jira or FakeJira(), sleep=lambda s: None)
+
+
+@pytest.fixture(autouse=True)
+def no_network(request, monkeypatch):
+    """Offline tests must never reach Jira, OpenRouter or Ollama; only tests marked `live` may."""
+    if request.node.get_closest_marker("live"):
+        return
+
+    def blocked(*args, **kwargs):
+        raise AssertionError("network call in an offline test (mark it @pytest.mark.live)")
+    monkeypatch.setattr("urllib.request.urlopen", blocked)
 
 
 @pytest.fixture
@@ -62,21 +105,22 @@ def fake_brain(brain_calls):
     """Stands in for preflight.check_brain: no network, records how it was called."""
     def check(env=None, network=True):
         brain_calls.append(network)
-        return {"brain": "llm", "provider": "openrouter", "model": "google/gemini-3.8-flash",
-                "network_checked": network, "key_limit_remaining": None, "credit_remaining": 5.0, "warnings": []}
+        return {"brain": "llm", "provider": "google", "model": "gemini-3.8-flash", "network_checked": network,
+                "warnings": []}
     return check
 
 
 @pytest.fixture
 def start(records, fake_brain):
-    """run_ticket with test defaults: temp records folder, fake brain, fake Jira (saved tickets), default settings."""
+    """run_ticket with test defaults: temp records folder, fake brain check, fake Jira (saved tickets), fake AI,
+    default settings. Nothing here reaches the network."""
     from specbridge.agent.graph import run_ticket
 
     def run(ticket_ref="SPEC-1", **kwargs):
         kwargs.setdefault("records_dir", records)
         kwargs.setdefault("brain_check", fake_brain)
         kwargs.setdefault("settings", Settings())
-        kwargs.setdefault("env", {"BRAIN": "llm", "OPENROUTER_API_KEY": FAKE_KEY})
-        kwargs["nodes"] = {"intake": fake_intake(), **(kwargs.get("nodes") or {})}
+        kwargs.setdefault("env", {"BRAIN": "llm", "GEMINI_API_KEY": FAKE_KEY})
+        kwargs["nodes"] = {"intake": fake_intake(), "understand": fake_understand(), **(kwargs.get("nodes") or {})}
         return run_ticket(ticket_ref, **kwargs)
     return run

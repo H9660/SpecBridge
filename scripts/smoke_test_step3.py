@@ -1,7 +1,8 @@
 """Step 3 smoke test: does the swappable brain (LLM / SLM adapter) work?
 
-Most checks run against a fake model server on this laptop (free, no key). The live checks use
-OpenRouter only when OPENROUTER_API_KEY is in .env (costs well under one cent). Writes data/smoke_test_step3.md.
+Most checks run against a fake model server on this laptop (free, no key). The live checks call
+Gemini directly (Google's OpenAI-compatible endpoint) only when GEMINI_API_KEY is in .env (free tier, or well
+under one cent). Writes data/smoke_test_step3.md.
 
 Usage:
   py -3.12 scripts/smoke_test_step3.py
@@ -99,17 +100,17 @@ def main():
     check("Brain settings file is complete (config/brains.json)",
           not gaps and config["default"] in config["brains"], f"brains: {sorted(config['brains'])}; gaps: {gaps or 'none'}")
 
-    env = {"OPENROUTER_API_KEY": FAKE_KEY}
+    env = {"GEMINI_API_KEY": FAKE_KEY}
     default = load_brain(env=env)
-    check("Default brain is the cloud LLM via OpenRouter",
-          (default.name, default.provider) == ("llm", "openrouter"), repr(default))
+    check("Default brain is the cloud LLM: Gemini, called directly at Google",
+          (default.name, default.provider) == ("llm", "google"), repr(default))
     slm = load_brain(env={"BRAIN": "slm"})
     check("BRAIN=slm switches to the local SLM with no code change",
           (slm.name, slm.provider, slm._api_key) == ("slm", "ollama", None), repr(slm))
-    other = load_brain(env={**env, "BRAIN_MODEL": "openai/gpt-5"})
-    check("BRAIN_MODEL swaps in any other OpenRouter model", other.model == "openai/gpt-5", repr(other))
+    other = load_brain(env={**env, "BRAIN_MODEL": "gemini-4-argon"})
+    check("BRAIN_MODEL swaps in another Gemini model", other.model == "gemini-4-argon", repr(other))
     errors = []
-    for bad_env, expect in (({"BRAIN": "nope"}, "unknown brain"), ({}, "needs OPENROUTER_API_KEY")):
+    for bad_env, expect in (({"BRAIN": "nope"}, "unknown brain"), ({}, "needs GEMINI_API_KEY")):
         try:
             load_brain(env=bad_env)
             errors.append(f"{bad_env}: no error")
@@ -184,7 +185,7 @@ def main():
               r.brain == "slm" and "Authorization" not in fake.requests[0]["headers"], f"{r.provider} {r.model}")
     attempt("Same code path works for a local SLM-style server (no key sent)", slm_path)
 
-    tracked = subprocess.run(["git", "grep", "--untracked", "-l", "-E", "sk-or-v1-[A-Za-z0-9]{20,}"], cwd=PROJECT,
+    tracked = subprocess.run(["git", "grep", "--untracked", "-l", "-E", "sk-or-v1-[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}"], cwd=PROJECT,
                              capture_output=True, text=True).stdout.split()
     check("No real API keys in files git could commit (.env excluded by .gitignore)", not tracked,
           ", ".join(tracked) or "none found")
@@ -192,15 +193,18 @@ def main():
     real_env = load_env()
     live = None
     try:
-        live = load_brain("llm", env={**real_env, "OPENROUTER_API_KEY": real_env.get("OPENROUTER_API_KEY") or "x"})
-        check("Configured model exists on OpenRouter", live.model_available(), live.model)
+        if not real_env.get("GEMINI_API_KEY"):
+            check("Configured model exists at Google", "PENDING", "add GEMINI_API_KEY to .env (Google lists models only with a key)")
+        else:
+            live = load_brain("llm", env=real_env)
+            check("Configured model exists at Google", live.model_available(), live.model)
     except BrainError as err:
-        check("Configured model exists on OpenRouter", "FAIL", str(err)[:200])
+        check("Configured model exists at Google", "FAIL", str(err)[:200])
 
     names = ("Live LLM: plain answer", "Live LLM: JSON answer about a sample ticket")
-    if not real_env.get("OPENROUTER_API_KEY"):
+    if not real_env.get("GEMINI_API_KEY"):
         for n in names:
-            check(n, "PENDING", "add OPENROUTER_API_KEY to .env")
+            check(n, "PENDING", "add GEMINI_API_KEY to .env")
     else:
         def live_calls():
             b = load_brain("llm", env=real_env)

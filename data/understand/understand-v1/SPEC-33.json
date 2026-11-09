@@ -1,0 +1,166 @@
+{
+ "ticket": {
+  "key": "SPEC-33",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-33",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Bill Discount Management with Audit Trail",
+  "text": "Bill Discount Management with Audit Trail\n\nEnable administrators to apply discounts to patient bills with full traceability. All discounts must capture initiator, approver, amount, justification, and timestamp for complete auditability.\n\nUser Story:\n\n- As an Administrator, I want a feature to apply discounts to patient bills, so that we can support facility-level financial needs while maintaining full auditability and preventing informal practices.\n\nFunctional Requirements:\n\n- Access Control and Configuration\n  - The ability to initiate or approve discounts is restricted to Admin roles only\n  - Discount functionality must be configurable (enabled/disabled) at the facility level\n  - Facilities can enable/disable the discount feature through system settings\n  - When disabled, discount options are hidden from all users, including admins\n  - Cannot apply multiple discounts to the same bill\n  - Cannot apply discount to bills with status: PAID, REFUNDED, CANCELLED\n- Discount Initiation\n  - Administrators can apply discounts to bills with a status of PENDING or UNPAID\n  - Discount can be applied as:\n    - Percentage discount (e.g., 10%, 25%, 50%)\n    - Fixed amount discount (e.g., 500, 1,000)\n  - System validates that the discount does not exceed the bill total\n  - Add \"Apply Discount\" action button on eligible bills\n- Every Discount Captures the following Information\n  - Initiator ID: Admin user who initiated the discount\n  - Approver ID: Admin user who approved the discount (if different from initiator)\n  - Discount value: The percentage or specific amount\n  - Justification: Mandatory reason for discount\n  - Date and time stamp: Automatic capture of when the discount was applied\n- Invoice and Receipt Display\n  - Original price: Full amount before discount e.g., 5,000\n  - Discount applied: Amount, e.g., 500\n  - Final amount: Amount due after discount e.g., 4,500\n- Audit Trail\n  - Bill reference number\n  - Patient name and identifier\n  - Original amount\n  - Discount amount\n  - Final amount\n  - Initiator name and ID\n  - Approver name and ID (where applicable)\n  - Justification reason\n  - Timestamp",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Enable administrators to configure and apply traceable percentage or fixed discounts with mandatory justifications to eligible patient bills, reflecting the changes on invoices, receipts, and an audit trail.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The ability to initiate or approve discounts is restricted to Admin roles only.",
+    "source": "stated",
+    "quote": "The ability to initiate or approve discounts is restricted to Admin roles only",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The discount feature can be enabled or disabled at the facility level through system settings.",
+    "source": "stated",
+    "quote": "Facilities can enable/disable the discount feature through system settings",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "When the discount feature is disabled in settings, discount options are hidden from all users including admins.",
+    "source": "stated",
+    "quote": "When disabled, discount options are hidden from all users, including admins",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "An 'Apply Discount' action button appears on bills with status PENDING or UNPAID.",
+    "source": "stated",
+    "quote": "Add \"Apply Discount\" action button on eligible bills",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Discounts cannot be applied to bills with status PAID, REFUNDED, or CANCELLED.",
+    "source": "stated",
+    "quote": "Cannot apply discount to bills with status: PAID, REFUNDED, CANCELLED",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "Multiple discounts cannot be applied to the same bill.",
+    "source": "stated",
+    "quote": "Cannot apply multiple discounts to the same bill",
+    "status": "ok"
+   },
+   {
+    "id": "AC7",
+    "text": "Admins can specify discount as either a percentage or a fixed amount.",
+    "source": "stated",
+    "quote": "Discount can be applied as:\n    - Percentage discount (e.g., 10%, 25%, 50%)\n    - Fixed amount discount (e.g., 500, 1,000)",
+    "status": "ok"
+   },
+   {
+    "id": "AC8",
+    "text": "The system validates and prevents discount values from exceeding the bill total.",
+    "source": "stated",
+    "quote": "System validates that the discount does not exceed the bill total",
+    "status": "ok"
+   },
+   {
+    "id": "AC9",
+    "text": "Applying a discount requires entering a mandatory justification reason.",
+    "source": "stated",
+    "quote": "Justification: Mandatory reason for discount",
+    "status": "ok"
+   },
+   {
+    "id": "AC10",
+    "text": "Invoices and receipts display the original price, discount applied, and final amount.",
+    "source": "stated",
+    "quote": "Invoice and Receipt Display\n  - Original price: Full amount before discount e.g., 5,000\n  - Discount applied: Amount, e.g., 500\n  - Final amount: Amount due after discount e.g., 4,500",
+    "status": "ok"
+   },
+   {
+    "id": "AC11",
+    "text": "The audit trail records bill reference, patient info, original amount, discount amount, final amount, initiator, approver (if applicable), justification, and timestamp.",
+    "source": "stated",
+    "quote": "Audit Trail\n  - Bill reference number\n  - Patient name and identifier\n  - Original amount\n  - Discount amount\n  - Final amount\n  - Initiator name and ID\n  - Approver name and ID",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "system settings",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/hooks/useSystemSetting.ts",
+     "patient-chart/packages/esm-patient-common-lib/src/useSystemVisitSetting.ts"
+    ]
+   },
+   {
+    "name": "Apply Discount action button",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/components/order-price-details.component.tsx",
+     "billing-app/src/invoice/payments/payments.component.tsx"
+    ]
+   },
+   {
+    "name": "Apply Discount dialog",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/components/order-price-details.component.tsx",
+     "billing-app/src/invoice/payments/payments.component.tsx"
+    ]
+   },
+   {
+    "name": "Invoice and Receipt Display",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/invoice/printable-invoice/print-receipt.component.tsx"
+    ]
+   },
+   {
+    "name": "Audit Trail",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/framework/esm-api/src/types/openmrs-resource.ts"
+    ]
+   }
+  ],
+  "roles": [
+   "Administrator"
+  ],
+  "questions": [
+   "Is there a multi-step approval workflow required (e.g., pending approval queue), or does a single administrator initiate and apply the discount directly?",
+   "Where should the discount audit trail be displayed in the UI (e.g., on the bill details page, or in a separate audit report)?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Bill discount configuration, application, and audit trail are core features of the OpenMRS 3 billing app.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2100,
+   "output_tokens": 1744,
+   "cost_usd": 0.008115,
+   "cost_estimated": true,
+   "seconds": 534.94,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

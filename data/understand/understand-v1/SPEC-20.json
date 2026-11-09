@@ -1,0 +1,86 @@
+{
+ "ticket": {
+  "key": "SPEC-20",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-20",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Regression: Address hierarchy does not clear dependent fields",
+  "text": "Regression: Address hierarchy does not clear dependent fields\n\n## Problem\n\nWhen `searchAddressByLevel` is enabled, changing a parent address field can leave child values from the previous selection. This can produce inconsistent addresses, such as Uganda with Nairobi as the province.\n\nThis is a regression of O3-1754, which is marked Done.\n\n## Affected code\n\n- Address component container\n- Address hierarchy field reset\n\n## Root cause\n\nThe address container creates a nested patient-registration context with a `setFieldValue` function that does nothing. The address hierarchy uses this function when attempting to clear dependent fields.\n\n## How to reproduce\n\n1. Enable `searchAddressByLevel`.\n2. Select Kenya as the country.\n3. Select Nairobi as the state or province.\n4. Change the country to Uganda.\n5. Nairobi remains selected.\n\n## Expected behaviour\n\nChanging a parent address field should clear every dependent child field.\n\n## Implementation notes\n\nAllow the address hierarchy to use the real form `setFieldValue` function instead of the no-op function from the nested context.\n\n## Acceptance criteria\n\n- Changing the country clears all dependent address fields.\n- Changing another parent level clears the levels below it.\n- The selected parent value is preserved.\n- Tests use the real hierarchy interaction and verify the resulting form values.\n- Behaviour without `searchAddressByLevel` remains unchanged.\n\nVerified against `openmrs-esm-patient-management` commit `c64fb3366119833e9e09a0eb31d580c9e1558d8b`.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Ensure that selecting a new value in a parent address field clears all dependent child address fields in the patient registration form.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Changing the country field clears all dependent child address fields.",
+    "source": "stated",
+    "quote": "Changing the country clears all dependent address fields.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Changing any parent address level clears all lower-level fields dependent on it.",
+    "source": "stated",
+    "quote": "Changing another parent level clears the levels below it.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The selected parent address value remains preserved after dependent child fields are cleared.",
+    "source": "stated",
+    "quote": "The selected parent value is preserved.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Address entry behavior remains unchanged when searchAddressByLevel is not enabled.",
+    "source": "stated",
+    "quote": "Behaviour without `searchAddressByLevel` remains unchanged.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Patient registration",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.resource.ts",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts"
+    ]
+   },
+   {
+    "name": "Address component container",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/field/address/address-field.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Patient registration and address hierarchy are standard parts of the patient-management module in OpenMRS 3.",
+  "testable": true,
+  "reason": "Address hierarchy selection and dependent field clearing can be directly exercised and verified in the browser during patient registration.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1953,
+   "output_tokens": 916,
+   "cost_usd": 0.00489975,
+   "cost_estimated": true,
+   "seconds": 42.69,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

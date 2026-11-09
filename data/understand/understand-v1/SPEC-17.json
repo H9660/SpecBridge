@@ -1,0 +1,80 @@
+{
+ "ticket": {
+  "key": "SPEC-17",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-17",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Support fullWidth configuration for obs-by-encounter-widget",
+  "text": "Support fullWidth configuration for obs-by-encounter-widget\n\nSummary: Allow configuration of `fullWidth` for `obs-by-encounter-widget`\n\nDescription: Currently, the `obs-by-encounter-widget` (using the `switchableObs` component) is hardcoded to `\"fullWidth\": false` in its `routes.json` meta definition.\n\nReference: routes.json#L13\n\nThis prevents implementers from displaying the widget across the full width of the dashboard. For observation-heavy forms (like a Partograph or TB Screening), the narrow column constraints cause usability and layout issues.\n\nWe need the ability to make this widget full-width. Ideally, this property should be customizable via the configuration schema or it should inherit/respect the layout constraints defined by the implementer in the dashboard config.\n\nAcceptance Criteria:\n\n- The `obs-by-encounter-widget` supports rendering across the full width of the dashboard.\n- The `fullWidth` setting is exposed to implementers via the frontend configuration schema, allowing them to override the default `false` value.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Allow implementers to configure the obs-by-encounter-widget to render across the full width of the dashboard via frontend configuration.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The obs-by-encounter-widget supports rendering across the full width of the dashboard.",
+    "source": "stated",
+    "quote": "The `obs-by-encounter-widget` supports rendering across the full width of the dashboard.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The fullWidth setting is exposed in the frontend configuration schema to allow implementers to override the default false value.",
+    "source": "stated",
+    "quote": "The `fullWidth` setting is exposed to implementers via the frontend configuration schema, allowing them to override the default `false` value.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "obs-by-encounter-widget",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-ward-app/src/ward-patient-card/row-elements/ward-patient-obs.resource.ts",
+     "patient-chart/packages/esm-generic-patient-widgets-app/src/resources/useObs.ts"
+    ]
+   },
+   {
+    "name": "dashboard",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/billable-services/dashboard/dashboard.component.tsx",
+     "patient-chart/packages/esm-patient-common-lib/src/dashboards/createDashboardLink.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "implementer"
+  ],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Relates to dashboard layout and widget display configuration in the OpenMRS 3 patient chart.",
+  "testable": true,
+  "reason": "Testers can set the fullWidth configuration option and verify in the browser whether the obs-by-encounter-widget expands to full width on the dashboard.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1849,
+   "output_tokens": 846,
+   "cost_usd": 0.00455925,
+   "cost_estimated": true,
+   "seconds": 76.7,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -1,0 +1,90 @@
+{
+ "ticket": {
+  "key": "SPEC-39",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-39",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Implement the Two-Factor Verification Page (TOTP)",
+  "text": "Implement the Two-Factor Verification Page (TOTP)\n\nImplement the second-factor verification screen displayed after successful username/password authentication.\n\nScope\n\n- Create the verification page.\n- Support multiple verification methods (e.g. TOTP and email verification).\n- Implement a reusable verification code input component using Carbon styling.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Provide a second-factor verification screen after login where users can enter a verification code via TOTP or email.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Display the second-factor verification page after successful username and password authentication.",
+    "source": "stated",
+    "quote": "Implement the second-factor verification screen displayed after successful username/password authentication.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Allow the user to use multiple verification methods, including TOTP and email verification.",
+    "source": "stated",
+    "quote": "Support multiple verification methods (e.g. TOTP and email verification).",
+    "status": "unclear"
+   },
+   {
+    "id": "AC3",
+    "text": "Provide a reusable verification code input component styled with Carbon.",
+    "source": "stated",
+    "quote": "Implement a reusable verification code input component using Carbon styling.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "verification page",
+    "role": "changed",
+    "found_in_code": false,
+    "where": []
+   },
+   {
+    "name": "username/password authentication",
+    "role": "used",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "How does the user switch between or select available verification methods (e.g., TOTP vs email)?",
+   "What are the code length and formatting requirements for the verification code input component?",
+   "What error message is displayed when an invalid or expired code is entered?",
+   "Where is the user redirected upon successful code verification?",
+   "\"verification page\" does not exist in the code: is it a new screen to be built, and where should it appear?",
+   "\"username/password authentication\" was not found in the code: which existing screen is meant?"
+  ],
+  "risks": [
+   {
+    "kind": "vague",
+    "detail": "The ticket lists high-level scope items without detailing the UI layout, error handling, resend functionality, or redirection upon successful verification."
+   },
+   {
+    "kind": "unknown-screen",
+    "detail": "not found in the code: verification page"
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Authentication and multi-factor verification are standard core app-shell capabilities for an EMR system like OpenMRS 3.",
+  "testable": false,
+  "reason": "the screen to change does not exist in the code: verification page",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1676,
+   "output_tokens": 904,
+   "cost_usd": 0.004647,
+   "cost_estimated": true,
+   "seconds": 390.71,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -1,0 +1,71 @@
+{
+ "ticket": {
+  "key": "SPEC-19",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-19",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Patient registration: Preserve local-language names when editing a patient",
+  "text": "Patient registration: Preserve local-language names when editing a patient\n\n## Problem\n\nEditing an existing patient deletes their local-language name even when the option remains enabled. This causes patient data loss.\n\n## Affected code\n\n- Name deletion during save\n- getDeletedNames()\n\n## Root cause\n\n`getDeletedNames()` returns the existing additional-name UUID whenever one exists. It does not check whether `addNameInLocalLanguage` is still enabled, so the name is scheduled for deletion on every patient edit.\n\n## How to reproduce\n\n1. Open an existing patient who has a local-language name.\n2. Edit an unrelated field.\n3. Leave the local-language name option enabled.\n4. Save the patient.\n5. Wait for the deletion request to complete, then reload the patient.\n6. The local-language name is missing.\n\n## Expected behaviour\n\nThe local-language name should only be deleted when the user disables the option.\n\n## Implementation notes\n\nUse `values.addNameInLocalLanguage` when determining whether the existing additional name should be deleted. Coordinate this change with the deletion-awaiting fix so the corrected deletion request is awaited.\n\n## Acceptance criteria\n\n- Editing an unrelated field preserves the local-language name.\n- Editing the local-language name updates it.\n- Disabling the option removes the local-language name.\n- Tests cover preserving, updating, and removing the name.\n\nVerified against `openmrs-esm-patient-management` commit `c64fb3366119833e9e09a0eb31d580c9e1558d8b`.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Ensure an existing patient's local-language name is retained when editing other fields, and only removed when explicitly disabled.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Editing an unrelated field on an existing patient preserves their local-language name.",
+    "source": "stated",
+    "quote": "Editing an unrelated field preserves the local-language name.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Editing the local-language name updates it when saved.",
+    "source": "stated",
+    "quote": "Editing the local-language name updates it.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Disabling the local-language name option removes the local-language name.",
+    "source": "stated",
+    "quote": "Disabling the option removes the local-language name.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Patient registration",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.resource.ts",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Editing patient demographics and managing patient registration details is a core feature of OpenMRS patient-management.",
+  "testable": true,
+  "reason": "The behavior can be verified through browser UAT steps by editing patient details and checking whether local-language names persist, update, or delete as expected.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1962,
+   "output_tokens": 1010,
+   "cost_usd": 0.005259,
+   "cost_estimated": true,
+   "seconds": 289.18,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

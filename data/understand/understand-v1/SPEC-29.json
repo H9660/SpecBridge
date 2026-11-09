@@ -1,0 +1,123 @@
+{
+ "ticket": {
+  "key": "SPEC-29",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-29",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Make calling status and drug order type filters configurable",
+  "text": "Make calling status and drug order type filters configurable\n\nPart 1 — \"Calling\" status label\n\nWhen a clinic user clicks Call on a queue entry, the app tells the backend to mark that patient as `\"calling\"`, so a waiting-room digital sign can display which patient is being called next. The string `\"calling\"` is currently hardcoded in the frontend.\n\nDeployments that want a different label - \"Now serving\", a localized term, or whatever their digital signage expects, can't change it. Every other status-related value in the app is configurable; this one was missed.\n\nPart 2 — \"Drug Order\" filter in the Medications tab\n\nWhen a clinic user expands a queue entry → Previous visit → Medications, the code filters the patient's orders to show only drug orders. The filter compares the order type's display name against the literal string `\"Drug Order\"`. This breaks for clinics that have renamed the order type (or run in a non-English locale).\n\nThe right way to filter is by the order type's UUID, which is stable across renames and locales.\n\n### Steps to Reproduce\n\nBoth parts are configuration / code-quality observations rather than reproducible user-facing bugs. They can be confirmed by code review:\n\n1. Open `openmrs-esm-patient-management/packages/esm-service-queues-app/src/queue-table/cells/queue-table-action-cell.component.tsx` - note the literal `'calling'` on line 38.\n2. Open `openmrs-esm-patient-management/packages/esm-service-queues-app/src/past-visit/past-visit-details/medications-list.component.tsx` - note the literal `'Drug Order'` filter.\n\n### Acceptance Criteria\n\n- Two new keys added to the app's config schema:\n  - A status label (defaulting to `\"calling\"`) used by the Call action.\n  - A drug-order-type identifier used by the Medications filter.\n- The Call action reads its value from the config instead of hardcoding `'calling'`.\n- The Medications list filters by the configured drug-order-type identifier instead of comparing against the display string `'Drug Order'`.\n- Each config key has a clear `_description` explaining what the value represents.\n- Default values preserve existing behavior so unmodified deployments are unaffected.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 2 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Make the queue calling status label and the past visit medication filter identifier configurable via app configuration schema.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Two new configuration keys are added to the app config schema: one for the status label (defaulting to 'calling') used by the Call action, and one for the drug-order-type identifier used by the Medications filter.",
+    "source": "stated",
+    "quote": "Two new keys added to the app's config schema:\n  - A status label (defaulting to \"calling\") used by the Call action.\n  - A drug-order-type identifier used by the Medications filter.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "The Call action on a queue entry sends the configured status value instead of hardcoded 'calling'.",
+    "source": "stated",
+    "quote": "The Call action reads its value from the config instead of hardcoding 'calling'.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The Medications list in a queue entry's past visit details filters orders by the configured drug-order-type identifier instead of matching against 'Drug Order'.",
+    "source": "stated",
+    "quote": "The Medications list filters by the configured drug-order-type identifier instead of comparing against the display string 'Drug Order'.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Each newly added configuration key includes a clear _description explaining what the value represents.",
+    "source": "stated",
+    "quote": "Each config key has a clear `_description` explaining what the value represents.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "Default values for both configuration keys preserve existing behavior without breaking unmodified deployments.",
+    "source": "stated",
+    "quote": "Default values preserve existing behavior so unmodified deployments are unaffected.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "queue entry",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/modals/clear-queue-entries-modal/clear-queue-entries.resource.ts",
+     "patient-management/packages/esm-service-queues-app/src/modals/queue-entry-actions.resource.ts"
+    ]
+   },
+   {
+    "name": "Call",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/modals/call-modal/call-queue-entry.resource.ts",
+     "patient-management/packages/esm-service-queues-app/src/modals/call-modal/call-queue-entry.modal.tsx"
+    ]
+   },
+   {
+    "name": "Previous visit",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/past-visit/past-visit.resource.ts",
+     "patient-management/packages/esm-service-queues-app/src/past-visit/past-visit.component.tsx"
+    ]
+   },
+   {
+    "name": "Medications",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-medications-app/src/past-medications/past-medications.component.tsx",
+     "dispensing-app/src/medication/medication.resource.tsx"
+    ]
+   }
+  ],
+  "roles": [
+   "clinic user"
+  ],
+  "questions": [
+   "What are the specific config key names to be added to the configuration schema?",
+   "What is the exact default UUID or identifier value for the drug order type config?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Service queues, patient visit details, and medication ordering are standard features of OpenMRS 3 patient management.",
+  "testable": true,
+  "reason": "UAT can test these changes by altering frontend configuration and verifying that the Call action sends the new status and that the Medications tab displays orders matching the configured drug order type.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2131,
+   "output_tokens": 1185,
+   "cost_usd": 0.006042,
+   "cost_estimated": true,
+   "seconds": 168.01,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

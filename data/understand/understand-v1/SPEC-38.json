@@ -1,0 +1,70 @@
+{
+ "ticket": {
+  "key": "SPEC-38",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-38",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "fix(login-app): Login Location tag filter silently ignored in useLocationCount",
+  "text": "fix(login-app): Login Location tag filter silently ignored in useLocationCount\n\n## Problem\n\nIn `location-picker.resource.ts`, the `useLocationCount` hook used\n`url.concat('&_tag=Login Location')` to apply the FHIR tag filter\nwhen `useLoginLocationTag` was enabled.\n\nHowever, `String.prototype.concat()` returns a new string without\nmutating the original variable — so the tag filter was never actually\napplied, regardless of the config value.\n\n## Impact\n\nHospitals that configured `chooseLocation.useLoginLocationTag: true`\nto restrict login locations were unknowingly receiving ALL locations\nfrom the server. This caused `locationCount` to return the total number\nof all locations rather than only tagged ones, breaking the auto-redirect\nlogic that skips the location picker when only one valid location exists.\n\n## Fix\n\n- Replaced `url.concat()` with `URLSearchParams` to correctly build\n  and encode the query string\n- Corrected FHIR parameter name from `tag=` to `_tag=`\n- Added unit tests for `useLocationCount` covering URL construction\n  for both flag values\n\n## Steps to Reproduce\n\n1. Configure `chooseLocation.useLoginLocationTag: true`\n2. Have only one location tagged as \"Login Location\"\n3. Observe that the location picker is NOT skipped (broken auto-redirect)\n\n## PR\n\n[link removed]",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Ensure that the login location count properly filters by the 'Login Location' tag so that the location picker is automatically skipped when only one tagged location exists.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When chooseLocation.useLoginLocationTag is enabled and only one location is tagged as 'Login Location', the login process skips the location picker via auto-redirect.",
+    "source": "stated",
+    "quote": "skips the location picker when only one valid location exists",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When chooseLocation.useLoginLocationTag is enabled and multiple locations are tagged as 'Login Location', the location picker is displayed.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "location picker",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-login-app/src/location-picker/location-picker.resource.ts",
+     "core/packages/framework/esm-styleguide/src/location-picker/location-picker.resource.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Applies to the core login flow and location picker in OpenMRS 3.",
+  "testable": true,
+  "reason": "checkable criteria found",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1929,
+   "output_tokens": 813,
+   "cost_usd": 0.0044955,
+   "cost_estimated": true,
+   "seconds": 472.13,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

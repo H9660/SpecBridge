@@ -13,7 +13,7 @@ A PM writes a Jira ticket; SpecBridge reads the real code and writes UAT test ca
 - **Git 2.30 or newer.**
 - **About 100 MB of disk** for the code repos, in a folder that is **not** synced by OneDrive, Dropbox or iCloud.
 - **Access to the team's Atlassian site** (`rooks101.atlassian.net`): ask the team to invite you, then create your own API token.
-- **An OpenRouter API key** for the AI "brain" (ask the team which key to use).
+- **A Google Gemini API key** for the AI "brain": create one at https://aistudio.google.com/apikey (free tier; turn on billing for higher limits).
 
 On Windows use `py -3.12` as shown below. On Mac/Linux use `python3.12` instead.
 
@@ -64,7 +64,7 @@ ATLASSIAN_API_TOKEN=<from https://id.atlassian.com/manage-profile/security/api-t
 JIRA_PROJECT_KEY=SPEC
 CONFLUENCE_SPACE_KEY=UAT
 BRAIN=llm
-OPENROUTER_API_KEY=<your OpenRouter key>
+GEMINI_API_KEY=<your Google AI Studio key>
 SPECBRIDGE_WORKDIR=C:/specbridge-work
 ```
 
@@ -89,9 +89,9 @@ SpecBridge can run on a cloud LLM or, later, a small local model (SLM). Nothing 
 
 | Setting in `.env` | Effect |
 |---|---|
-| `BRAIN=llm` | Cloud model through OpenRouter (default: `google/gemini-3.8-flash`) |
+| `BRAIN=llm` | Gemini, called directly at Google through its OpenAI-compatible endpoint (default: `gemini-3.8-flash`). Google does not report cost, so costs shown are estimates at list price; the free tier costs $0. |
 | `BRAIN=slm` | Local model through Ollama (not set up yet) |
-| `BRAIN_MODEL=<model id>` | Use another model for a run, e.g. `google/gemini-4-argon`, `anthropic/claude-sonnet-5.5` or any OpenRouter model |
+| `BRAIN_MODEL=<model id>` | Use another Gemini model for a run, e.g. `gemini-4-argon` |
 
 ## Folder layout
 

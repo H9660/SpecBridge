@@ -1,0 +1,106 @@
+{
+ "ticket": {
+  "key": "SPEC-41",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-41",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Dispensing: Support limiting prescriptions shown to locations under session's visit location",
+  "text": "Dispensing: Support limiting prescriptions shown to locations under session's visit location\n\nThe dispensing app has an Active Prescriptions and All Prescriptions tab, both containing a table showing prescriptions. The table can be configured to show a location filter, allowing the user to filter prescriptions for the selection locations.\n\nWe want to be able to further configure the location behavior, by introducing a `limitFilterOptionsBySessionVisitLocation` config, so that:\n\n- if true, limits the location selections dropdown to only those under the ancestor visit location for the user’s session location.\n- limit prescriptions rows shown to locations under user session’s visit location.\n\nFor example, suppose we have 2 hospitals. Within the system, both are “Visit Locations”. If I’m logged in to a (child) location under hospital A. I only want to see prescriptions form hospital A, and that the location filter to have location options from hospital A and not hospital B.\n\nImplementation-wise, we’d be modifying `config-schema.ts` :\n\n```\n  locationBehavior: {\n    locationColumn: {\n      enabled: boolean;\n    };\n    locationFilter: {\n      enabled: boolean;\n      tag: string;\n      associatedPharmacyLocationAttribute: string;\n    };\n\n    limitFilterOptionsBySessionVisitLocation: boolean; // new field here\n  };\n```",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Limit the location filter options and visible prescription rows in the dispensing app to locations under the user's session visit location when enabled by configuration.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When limitFilterOptionsBySessionVisitLocation is enabled, the location filter dropdown options are restricted to only locations under the ancestor visit location of the user's session location.",
+    "source": "stated",
+    "quote": "if true, limits the location selections dropdown to only those under the ancestor visit location for the user’s session location.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When limitFilterOptionsBySessionVisitLocation is enabled, prescription rows shown in the table are limited to locations under the user session's visit location.",
+    "source": "stated",
+    "quote": "limit prescriptions rows shown to locations under user session’s visit location.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "When limitFilterOptionsBySessionVisitLocation is disabled or false, location filter options and prescription rows are not restricted by the session's visit location hierarchy.",
+    "source": "inferred",
+    "quote": "",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "dispensing app",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/dispensing-tiles/dispensing-tiles.resource.tsx",
+     "dispensing-app/src/dispensing-link.component.tsx"
+    ]
+   },
+   {
+    "name": "Active Prescriptions tab",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/fill-prescription/fill-prescription-button.component.tsx",
+     "dispensing-app/src/prescriptions/prescription-tab-lists.component.tsx"
+    ]
+   },
+   {
+    "name": "All Prescriptions tab",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/prescriptions/prescriptions-table.component.tsx",
+     "dispensing-app/src/fill-prescription/on-prescription-filled.modal.tsx"
+    ]
+   },
+   {
+    "name": "location filter",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-list-management-app/src/lists-table/lists-table.component.tsx",
+     "dispensing-app/src/prescriptions/prescription-tab-panel.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "What is the default value for limitFilterOptionsBySessionVisitLocation if not specified in the configuration?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Configuring prescription display and location filtering in the dispensing app is a standard feature of OpenMRS 3.",
+  "testable": true,
+  "reason": "Testers can configure the setting, log in to specific locations, and verify the dropdown options and prescription table rows across the Active Prescriptions and All Prescriptions tabs.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1912,
+   "output_tokens": 1353,
+   "cost_usd": 0.00650775,
+   "cost_estimated": true,
+   "seconds": 313.82,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -252,7 +252,7 @@ Step 10 compares, on the same golden tickets: several workers vs one worker (`--
 
 ## 8. Security summary
 
-- **Secrets:** Atlassian, OpenRouter and GitHub tokens are read only by the code that calls those services. They never appear in a prompt, the run record or the page, and output is scanned for secret-like text before publishing.
+- **Secrets:** Atlassian, Google (Gemini) and GitHub tokens are read only by the code that calls those services. They never appear in a prompt, the run record or the page, and output is scanned for secret-like text before publishing.
 - **Least privilege:**
   - Reading is limited to the team's Jira project and the 5 configured repos (`read_file` refuses anything else).
   - Writing is limited to the `UAT` space and comments on the ticket being processed, and only `publish` can do it.

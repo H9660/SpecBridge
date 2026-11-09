@@ -1,0 +1,77 @@
+{
+ "ticket": {
+  "key": "SPEC-24",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-24",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Keep newly added relationship rows correctly associated",
+  "text": "Keep newly added relationship rows correctly associated\n\n## Impact\n\nWhen multiple relationships are added, removing one row can cause another row to display a relationship type that does not match its Formik value.\n\n## Affected code\n\n- `packages/esm-patient-registration-app/src/patient-registration/section/patient-relationships/relationships-section.component.tsx`\n- `packages/esm-patient-registration-app/src/patient-registration/patient-registration.types.ts`\n- `packages/esm-patient-registration-app/src/patient-registration/section/patient-relationships/relationships-section.test.tsx`\n\n## Root cause\n\nNew relationships do not have server UUIDs, but the UUID is used as the React key. Multiple new rows therefore share the same `undefined` key.\n\nThe relationship type selector uses `defaultValue`, making it uncontrolled. When React reuses a row after another row is removed, the selector can retain state from the removed row.\n\n## Reproduction\n\n1. Add two new relationship rows.\n2. Select a different person and relationship type in each row.\n3. Remove the first row.\n4. Inspect the remaining row.\n5. Its displayed selection may not match its Formik value.\n\n## Expected behavior\n\nEach relationship row should retain its own person and relationship type when other rows are added or removed.\n\n## Implementation direction\n\nGive each new relationship a stable client-side identifier when it is created. Use the server UUID as the key for existing relationships and the client-side identifier for new relationships.\n\nMake the relationship type selector controlled by its Formik value. Do not include the client-side identifier in REST payloads.\n\n## Acceptance criteria\n\n- Every relationship row has a unique, stable React key.\n- The relationship type selector is controlled by Formik.\n- Removing one row does not change another row’s displayed or stored values.\n- Adding multiple rows produces no duplicate-key warning.\n- Add an interaction test that assigns different values to two rows, removes the first, and verifies the second.\n\nVerified against `openmrs-esm-patient-management` commit `c64fb336`.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 3 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Ensure patient relationship rows in registration retain their selected person and relationship type when other relationship rows are added or removed.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Each relationship row retains its own person and relationship type when other rows are added or removed.",
+    "source": "stated",
+    "quote": "Each relationship row should retain its own person and relationship type when other rows are added or removed.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Removing one relationship row does not alter the displayed or stored values of any remaining relationship rows.",
+    "source": "stated",
+    "quote": "Removing one row does not change another row’s displayed or stored values.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Adding multiple relationship rows does not trigger duplicate-key warnings in the browser console.",
+    "source": "stated",
+    "quote": "Adding multiple rows produces no duplicate-key warning.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Patient Registration Relationships section",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/section/patient-relationships/relationships.resource.tsx",
+     "patient-management/packages/esm-patient-registration-app/src/patient-registration/section/patient-relationships/relationships-section.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Patient relationship management within patient registration is a core feature of OpenMRS patient-management.",
+  "testable": true,
+  "reason": "The bug can be validated directly through the browser UI by adding multiple relationship rows, populating them, deleting one row, and observing the displayed values in the remaining row.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2081,
+   "output_tokens": 1031,
+   "cost_usd": 0.005427,
+   "cost_estimated": true,
+   "seconds": 144.58,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

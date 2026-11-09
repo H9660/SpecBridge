@@ -1,0 +1,87 @@
+{
+ "ticket": {
+  "key": "SPEC-34",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-34",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Review discounts modal closes after first action even when multiple discounts are pending",
+  "text": "Review discounts modal closes after first action even when multiple discounts are pending\n\nWhen reviewing multiple pending discount requests for the same bill, clicking Approve (or Reject) on the first request closes the modal immediately — forcing the reviewer to reopen it to action the remaining requests.\n\nThe modal should remain open until the reviewer has actioned all pending discounts or explicitly chooses to close it. Each Approve/Reject should update its own request inline and leave the rest of the list intact.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Keep the Review discounts modal open after approving or rejecting an item so that multiple pending discount requests can be actioned without reopening the modal.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "The modal remains open after an action until the reviewer has actioned all pending discounts or explicitly closes it.",
+    "source": "stated",
+    "quote": "The modal should remain open until the reviewer has actioned all pending discounts or explicitly chooses to close it.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "Clicking Approve or Reject updates the corresponding request inline while keeping the rest of the list intact.",
+    "source": "stated",
+    "quote": "Each Approve/Reject should update its own request inline and leave the rest of the list intact.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Review discounts modal",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-orders-app/src/components/order-price-details.component.tsx",
+     "billing-app/src/invoice/payments/payments.component.tsx"
+    ]
+   },
+   {
+    "name": "Approve",
+    "role": "used",
+    "found_in_code": false,
+    "where": []
+   },
+   {
+    "name": "Reject",
+    "role": "used",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [
+   "reviewer"
+  ],
+  "questions": [
+   "Should the modal automatically close once the final pending discount is actioned, or should it stay open until the reviewer explicitly dismisses it?",
+   "\"Approve\" was not found in the code: which existing screen is meant?",
+   "\"Reject\" was not found in the code: which existing screen is meant?"
+  ],
+  "risks": [
+   {
+    "kind": "unknown-screen",
+    "detail": "not found in the code: Approve"
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Reviewing and actioning discount requests on bills is a core function of the billing app.",
+  "testable": true,
+  "reason": "The behavior can be verified in the browser by opening a bill with multiple pending discounts, performing an approve or reject action, and checking that the modal remains open and updates inline.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1703,
+   "output_tokens": 1039,
+   "cost_usd": 0.0051735,
+   "cost_estimated": true,
+   "seconds": 126.88,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

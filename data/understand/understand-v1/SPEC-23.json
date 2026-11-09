@@ -1,0 +1,82 @@
+{
+ "ticket": {
+  "key": "SPEC-23",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-23",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Service Queues always shows “Scheduled for today” and “On time”",
+  "text": "Service Queues always shows “Scheduled for today” and “On time”\n\nWhen a patient row is expanded in Service Queues, the current-visit header always displays “Scheduled for today” and “On time” beneath the visit type. Neither label is derived from appointment data or a punctuality attribute. This presents unsupported scheduling information as fact, including for visits without that data.\n\n## Steps to reproduce\n\n1. Open Service Queues and the Outpatient Clinic waiting list.\n2. Expand a patient with a loaded current visit and no appointment/punctuality data.\n3. Inspect the labels beneath the visit type.\n\n## Actual result\n\n“Scheduled for today” and “On time” appear regardless of whether the visit has supporting scheduling or punctuality data.\n\n## Expected result\n\nOnly display scheduling and punctuality claims supported by actual data. When unavailable, omit the labels or show an explicitly unknown state. A visit start date alone does not establish an appointment or punctuality.\n\n## Evidence\n\nIndependently verified in the release-tagged source:\n\n- v12.0.0 current-visit-summary.component.tsx, lines 84–89: both translated labels render unconditionally once the visit is loaded.\n- v12.0.0 unit test: a fixture with only visitType and encounters, with no visit date or attributes, is expected to show both labels.\n- v11.1.0 baseline component: same unconditional labels.\n- Already documented under Service Queues Technical Reference — Known issues and caveats.\n\nThe current visit shows “Scheduled for today” and “On time”. Both labels appear without checking appointment or punctuality data.\n\n## Suggested fix and acceptance\n\nRemove the unconditional labels until they can be backed by real scheduling/punctuality data. Update the unit test so a visit without that data does not claim “Scheduled for today” or “On time”. If data-derived labels are retained, cover supported and missing-data cases.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 1 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Remove or conditionally show the 'Scheduled for today' and 'On time' labels in Service Queues so they only appear when backed by actual scheduling and punctuality data.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When a patient row is expanded in Service Queues for a visit lacking scheduling or punctuality data, 'Scheduled for today' and 'On time' must not be unconditionally displayed (omit them or show an explicit unknown state).",
+    "source": "stated",
+    "quote": "Only display scheduling and punctuality claims supported by actual data. When unavailable, omit the labels or show an explicitly unknown state.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When valid appointment or punctuality data exists, display scheduling and punctuality labels that match the actual visit data.",
+    "source": "stated",
+    "quote": "If data-derived labels are retained, cover supported and missing-data cases.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Service Queues",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/admin/queues/queue-form.workspace.tsx",
+     "patient-management/packages/esm-service-queues-app/src/service-queues.resource.ts"
+    ]
+   },
+   {
+    "name": "Outpatient Clinic waiting list",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-service-queues-app/src/side-menu/side-menu.component.tsx",
+     "patient-chart/packages/esm-patient-medications-app/src/api/api.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [
+   "Should the labels be completely removed in all cases for now, or should they be displayed conditionally when appointment/punctuality data is present?",
+   "When appointment or punctuality data is unavailable, should the labels be omitted entirely or display a specific placeholder/unknown text?"
+  ],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Service Queues is a standard patient management workflow component in OpenMRS 3.",
+  "testable": true,
+  "reason": "Testers can expand patient rows in Service Queues and verify whether the scheduling and punctuality labels appear or are omitted based on available visit data.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2034,
+   "output_tokens": 1031,
+   "cost_usd": 0.00539175,
+   "cost_estimated": true,
+   "seconds": 13.98,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -606,8 +606,13 @@ INSTRUCTION_PATTERNS = [
                r"test cases?|uat)\s+as\s+(?:approved|signed[ -]off|passed|verified|done)\b"),
     re.compile(r"\b(?:qa|uat|pm)\s+(?:has\s+)?(?:already\s+)?(?:signed[ -]?off|approved)\b"
                r"|\bapproved by the (?:pm|qa|product manager)\b|\balready (?:approved|signed[ -]off)\b"),
+    # UPDATED (restored, narrow): a sign-off claimed as done ("QA sign-off: complete"), not "QA sign-off required".
+    re.compile(r"\b(?:qa|uat|pm)\s+sign[ -]?off\s*[:=\-]\s*(?:complete|completed|done|approved|granted|given|yes|passed)\b"),
     re.compile(r"\b(?:reveal|print|output|leak|exfiltrate|disclose|repeat)\b[^.\n]{0,30}\b(?:your|the)\s+"
                r"(?:system\s+)?(?:prompt|instructions|api key|credentials|secrets?)\b"),
+    # UPDATED (restored, narrow): asking for a real credential to be put in the output ("include the admin password").
+    re.compile(r"\b(?:include|insert|paste|add|put|write|send|share)\b[^.\n]{0,30}\b(?:admin|root|real|actual|"
+               r"production|prod|live)\s+(?:password|passwords|credentials|api keys?|tokens?)\b"),
     re.compile(r"\[hidden text:"),                     # produced by clean_text for invisible Unicode tags
 ]
 # UPDATED (new): look-alike Cyrillic / Greek letters mapped to Latin so they can't evade detection.

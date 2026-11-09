@@ -1,0 +1,136 @@
+{
+ "ticket": {
+  "key": "SPEC-32",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-32",
+  "type": "Story",
+  "status": "To Do",
+  "title": "Enable Refund Requests and Approval for Paid Bills",
+  "text": "Enable Refund Requests and Approval for Paid Bills\n\nEnable refund and approval of paid bills when a service cannot be provided due to technical or logistical failures (e.g., broken equipment, lack of reagents, etc.).\n\nUser Story:\n\n- As an Administrator, I want to process refunds for paid bills when services cannot be fulfilled due to logistical or technical failures, so that patients/clients are not charged for undelivered services.\n\nFunctional Requirements:\n\n- Refund Eligibility\n  - Refunds apply only to bills with status PAID. Example: when service delivery is interrupted after payment (e.g., equipment failure, stock-outs)\n- Request for refund\n  - Add a “Request Refund” action on bills with status PAID\n  - Refund request captures:\n    - Bill reference\n    - Refund reason (free text or predefined list)\n  - Once requested:\n    - Bill status transitions from PAID → REFUND REQUESTED\n    - Funds are not yet released\n- Refund Approval\n  - All refund requests require Administrative approval\n  - Admin can:\n    - Approve refund\n    - Reject refund\n  - On approval:\n    - Bill status transitions from REFUND REQUESTED → REFUNDED\n  - On rejection:\n    - Bill status returns to PAID\n- Cashier Handling\n  - Approved refunds are visible to the cashier\n  - Cashier completes the refund (cash or electronic, per facility policy)\n  - System records refund completion\n  - Refund cannot be processed without prior admin approval\n- Status Transitions\n  - PAID → REFUND REQUESTED → REFUNDED\n  - PAID → REFUND REQUESTED → PAID (if rejected)\n- Audit Logging\n  - Who requested the refund\n  - Who approved/rejected it\n  - Date and time of each action\n- Scenario Workflow\n  - The patient pays for the lab test\n  - Equipment breaks before the sample is processed\n  - Cashier requests refund → status becomes REFUND REQUESTED\n  - Admin approves refund\n  - The cashier issues a refund\n  - Bill status updates to REFUNDED",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Enable staff to request refunds on paid bills, require administrator approval or rejection, and allow cashiers to complete approved refunds.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Refund requests are only available for bills that have a status of PAID.",
+    "source": "stated",
+    "quote": "Refunds apply only to bills with status PAID",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "A 'Request Refund' action is available on bills with status PAID, capturing bill reference and a refund reason.",
+    "source": "stated",
+    "quote": "Add a “Request Refund” action on bills with status PAID\n  - Refund request captures:\n    - Bill reference\n    - Refund reason (free text or predefined list)",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "Submitting a refund request changes the bill status from PAID to REFUND REQUESTED and holds funds.",
+    "source": "stated",
+    "quote": "Once requested:\n    - Bill status transitions from PAID → REFUND REQUESTED\n    - Funds are not yet released",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "An administrator can approve or reject refund requests.",
+    "source": "stated",
+    "quote": "Admin can:\n    - Approve refund\n    - Reject refund",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "When an admin rejects a refund request, the bill status returns to PAID.",
+    "source": "stated",
+    "quote": "On rejection:\n    - Bill status returns to PAID",
+    "status": "ok"
+   },
+   {
+    "id": "AC6",
+    "text": "On admin approval, the bill status transitions from REFUND REQUESTED to REFUNDED.",
+    "source": "stated",
+    "quote": "On approval:\n    - Bill status transitions from REFUND REQUESTED → REFUNDED",
+    "status": "conflicting"
+   },
+   {
+    "id": "AC7",
+    "text": "The cashier issues the refund and the bill status updates to REFUNDED.",
+    "source": "stated",
+    "quote": "The cashier issues a refund\n  - Bill status updates to REFUNDED",
+    "status": "conflicting"
+   },
+   {
+    "id": "AC8",
+    "text": "Approved refunds are visible to the cashier to complete the refund (cash or electronic), which cannot be processed without prior admin approval.",
+    "source": "stated",
+    "quote": "Approved refunds are visible to the cashier\n  - Cashier completes the refund (cash or electronic, per facility policy)\n  - System records refund completion",
+    "status": "ok"
+   },
+   {
+    "id": "AC9",
+    "text": "Audit logging records user identity and date/time for refund request and approval/rejection actions.",
+    "source": "stated",
+    "quote": "Audit Logging\n  - Who requested the refund\n  - Who approved/rejected it\n  - Date and time of each action",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "bills",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "billing-app/src/bill-history/bill-history.component.tsx",
+     "billing-app/src/billing-dashboard/billing-dashboard.component.tsx"
+    ]
+   },
+   {
+    "name": "Request Refund",
+    "role": "changed",
+    "found_in_code": false,
+    "where": []
+   }
+  ],
+  "roles": [
+   "Administrator",
+   "Cashier"
+  ],
+  "questions": [
+   "When exactly does the bill transition to REFUNDED: immediately upon Admin approval, or only after the Cashier records/completes the payout?",
+   "Is there an intermediate status (such as REFUND APPROVED) while waiting for the cashier to issue the refund?",
+   "Where in the cashier UI are approved refund requests listed for the cashier to process?",
+   "\"Request Refund\" does not exist in the code: is it a new screen to be built, and where should it appear?"
+  ],
+  "risks": [
+   {
+    "kind": "contradictory",
+    "detail": "Under 'Refund Approval', the ticket states bill status transitions to REFUNDED upon approval, but 'Scenario Workflow' and 'Cashier Handling' indicate status updates to REFUNDED only after the cashier issues the refund."
+   },
+   {
+    "kind": "unknown-screen",
+    "detail": "not found in the code: Request Refund"
+   }
+  ],
+  "domain_fit": "fits",
+  "domain_reason": "Refund processing and approval for patient services is a core function of the OpenMRS 3 billing application.",
+  "testable": false,
+  "reason": "the screen to change does not exist in the code: Request Refund",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2044,
+   "output_tokens": 2526,
+   "cost_usd": 0.0110055,
+   "cost_estimated": true,
+   "seconds": 152.37,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

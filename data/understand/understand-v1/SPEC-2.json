@@ -1,0 +1,99 @@
+{
+ "ticket": {
+  "key": "SPEC-2",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-2",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Starting a visit from a patient search result throws because the patient-chart workspace group is launched without group props",
+  "text": "Starting a visit from a patient search result throws because the patient-chart workspace group is launched without group props\n\n## Symptom\n\nStarting a visit from a patient search result card (the legacy `start-visit-button-slot` — e.g. the ward \"Add patient to ward\" flow, and any patient-banner Start visit button rendered outside the chart) throws:\n\n`can't access property \"patientUuid\", e.groupProps is null`\n\nReproduces on dev3. Surfaced during review of openmrs/openmrs-esm-patient-management#2172 (that PR is unrelated and correct; this is a pre-existing legacy-path bug).\n\n## Root cause\n\n`start-visit-workspace-form` belongs to the `patient-chart` workspace group. Launched from inside the chart, the group is already open with group props (patient, patientUuid, visitContext). Launched cold from patient search, `esm-patient-chart-app/src/visit/start-visit-button.component.tsx` calls `launchWorkspace2` with `patientUuid` in `workspaceProps` and omits the 4th `groupProps` argument, so the group opens with `groupProps = null`.\n\nThe framework then renders the group's action menu, passing `groupProps = null` to every patient-chart action-button icon, and `VisitForm` reads its patient context only from `groupProps`. Both destructure it unguarded and throw. The notes visit-note button is the one that surfaces because it is registered with `getSyncLifecycle` (renders synchronously) while the orders/forms buttons are async, but the fragility is shared.\n\nDates to the Workspace v2 migration (O3-4961).\n\n## Fix (two small bug-fix PRs, patient-management merged/released first)\n\n1. `openmrs-esm-patient-management` — pass the mapped FHIR `patient` into the legacy `start-visit-button-slot` state (parity with `start-visit-button-slot2`, which already does), in `patient-banner.component.tsx`. Add a test asserting the legacy slot receives `patientUuid` and `patient`.\n2. `openmrs-esm-patient-chart` — in `start-visit-button.component.tsx`, accept `patient` and launch with the patient-chart group props as the 4th `launchWorkspace2` argument (`{ patient, patientUuid, visitContext: null, mutateVisitContext: null }`); drop `patientUuid` from `workspaceProps` (VisitForm reads it from `groupProps`). Update the test to assert the four-argument call.\n\nKept separate from #2172.",
+  "labels": [
+   "golden-v0",
+   "mentions-files"
+  ],
+  "flags": [
+   {
+    "kind": "mentions-files",
+    "detail": "names 3 code file(s)"
+   }
+  ]
+ },
+ "understanding": {
+  "intent": "Allow users to start a visit from patient search results or banners outside the patient chart without encountering an error.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "Clicking the Start Visit button from a patient search result card or external patient banner (such as the 'Add patient to ward' flow) successfully opens the start visit workspace form without throwing an error.",
+    "source": "stated",
+    "quote": "Starting a visit from a patient search result card (the legacy start-visit-button-slot — e.g. the ward \"Add patient to ward\" flow, and any patient-banner Start visit button rendered outside the chart) throws",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "patient search result card",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-medications-app/src/add-drug-order/drug-search/order-basket-search-results.component.tsx",
+     "patient-chart/packages/esm-patient-orders-app/src/order-basket/general-order-type/add-general-order/search-results.component.tsx"
+    ]
+   },
+   {
+    "name": "patient-banner",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-patient-search-app/src/patient-search-page/patient-banner/banner/patient-banner.component.tsx",
+     "core/packages/framework/esm-styleguide/src/patient-banner/patient-info/patient-banner-patient-info.component.tsx"
+    ]
+   },
+   {
+    "name": "Add patient to ward",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-management/packages/esm-ward-app/src/ward-workspace/admission-request-workspace/admission-requests-empty-state.component.tsx",
+     "patient-management/packages/esm-ward-app/src/ward-workspace/admission-request-workspace/admission-requests.workspace.tsx"
+    ]
+   },
+   {
+    "name": "Start visit button",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-common-lib/src/launchStartVisitPrompt.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/start-visit-button.component.tsx"
+    ]
+   },
+   {
+    "name": "start-visit-workspace-form",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-common-lib/src/launchStartVisitPrompt.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/start-visit-button.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Starting patient visits from search cards and banners is a core workflow in OpenMRS 3 patient management and clinical charting.",
+  "testable": true,
+  "reason": "Testers can navigate to search results or ward flows outside the patient chart, click the Start Visit button, and verify that the start visit form opens correctly without UI crashes.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2206,
+   "output_tokens": 792,
+   "cost_usd": 0.0046245,
+   "cost_estimated": true,
+   "seconds": 325.6,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

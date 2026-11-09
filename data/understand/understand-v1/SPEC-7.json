@@ -1,0 +1,94 @@
+{
+ "ticket": {
+  "key": "SPEC-7",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-7",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Login location picker ignores the configured number of locations to load",
+  "text": "Login location picker ignores the configured number of locations to load\n\n## Description\n\nThe login app has two settings for the location picker on the login screen: one to control how many locations are fetched at a time (`chooseLocation.locationsPerRequest`) and one to control how many are shown (`chooseLocation.numberToShow`). Neither setting actually does anything. The picker always fetches 50 locations per request regardless of what an implementation configures, so changing these values in a distro config has no effect.\n\n`numberToShow` is left over from an older fixed-length location list and no longer has a meaningful equivalent now that the picker uses infinite scroll, so keeping it in the config only misleads implementers.\n\n## Acceptance criteria\n\n- When `chooseLocation.locationsPerRequest` is set in config, the login location picker uses that value for each batch of locations it fetches and for when it loads more on scroll.\n- When it isn't set, the picker keeps its current default behaviour.\n- `chooseLocation.numberToShow` is no longer offered as a config option. Implementations that still set it see at most a standard \"unknown config key\" warning, with no other change in behaviour.\n- No visible UI changes to the login screen.\n- Covered by a test that verifies the configured value reaches the location picker.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Allow the login location picker to respect the configured batch size for fetching locations and remove the obsolete number-to-show configuration option.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When chooseLocation.locationsPerRequest is configured, the login location picker fetches that specified number of locations in each request initially and when scrolling for more.",
+    "source": "stated",
+    "quote": "When chooseLocation.locationsPerRequest is set in config, the login location picker uses that value for each batch of locations it fetches and for when it loads more on scroll.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When chooseLocation.locationsPerRequest is not configured, the login location picker retains its default batch fetch behavior of 50 locations per request.",
+    "source": "stated",
+    "quote": "When it isn't set, the picker keeps its current default behaviour.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "The chooseLocation.numberToShow configuration key is deprecated/removed so that setting it causes at most a standard unknown config key warning and does not alter picker behavior.",
+    "source": "stated",
+    "quote": "chooseLocation.numberToShow is no longer offered as a config option. Implementations that still set it see at most a standard \"unknown config key\" warning, with no other change in behaviour.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "The login screen layout and visual appearance remain unchanged.",
+    "source": "stated",
+    "quote": "No visible UI changes to the login screen.",
+    "status": "ok"
+   },
+   {
+    "id": "AC5",
+    "text": "An automated test verifies that the configured locationsPerRequest value properly passes to the location picker.",
+    "source": "stated",
+    "quote": "Covered by a test that verifies the configured value reaches the location picker.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "login screen",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-login-app/src/login.resource.ts",
+     "core/packages/apps/esm-login-app/src/declarations.d.ts"
+    ]
+   },
+   {
+    "name": "location picker",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "core/packages/apps/esm-login-app/src/location-picker/location-picker.resource.ts",
+     "core/packages/framework/esm-styleguide/src/location-picker/location-picker.resource.ts"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Configuring location loading in the login screen is a standard part of the OpenMRS 3 app shell and authentication flow.",
+  "testable": true,
+  "reason": "Testers can configure different values for chooseLocation.locationsPerRequest and observe network calls and loaded items in the location picker on the login screen.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1882,
+   "output_tokens": 1329,
+   "cost_usd": 0.00639525,
+   "cost_estimated": true,
+   "seconds": 308.43,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -1,0 +1,105 @@
+{
+ "ticket": {
+  "key": "SPEC-4",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-4",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Saved image attachments are missing when editing a visit note",
+  "text": "Saved image attachments are missing when editing a visit note\n\nAn image uploaded through a visit note saves successfully and appears on the patient's Attachments page, but it is missing when we reopen that note for editing.\n\n### Steps to reproduce\n\n1. On https://dev3.openmrs.org, open a test patient with an active visit.\n2. Add a visit note with a primary diagnosis, note text and one PNG image.\n3. Click Save and close. Confirm the image appears on the patient's Attachments page.\n4. Go to Visits, expand the visit and open Timeline.\n5. Open the saved Visit Note encounter's actions menu and select Edit this encounter.\n\n### Actual behaviour\n\nThe note text and diagnosis reload. The Image section contains only Add image, with no saved thumbnail.\n\n### Expected behaviour\n\nImages uploaded through a visit note should remain associated with that encounter and appear when the note is reopened for editing.\n\n### Validation\n\nReproduced on dev3 on 16 September 2026 with Tiny Test and the note text \"QA attachment test: single PNG upload, 16 September 2026.\" The single image saved successfully before reopening the note. This is separate from the concurrent-upload failure tracked in ATT-65.\n\n### Investigation\n\nThe visit-note form calls createAttachment with the patient UUID and uploaded file. The shared helper sends no encounter UUID, although AttachmentResource.upload accepts an encounter parameter and ComplexObsSaver assigns it to the attachment observation.\n\nThe edit form also starts with an empty images array and does not load saved attachments. Linking uploads alone will not populate the edit form.\n\n### Proposed scope\n\n- Pass the saved visit-note encounter UUID when uploading its images.\n- Load attachments associated with that encounter when editing the note.\n- Keep saved attachments separate from new uploads so a text edit does not upload existing images again.\n- Preserve existing patient-level attachments on the Attachments page. Do not infer a note association for older attachments that were saved without one.\n\n### Acceptance criteria\n\n- Create a note with one image, save it and reopen it: the saved image is visible.\n- Edit only the note text and save: the existing image remains and is not duplicated.\n- Add another image while editing and save: both images appear when the note is reopened.\n- Attachments from other encounters are not shown as belonging to this note.\n\nRelated historical work: O3-2618 wired visit-note uploads into the patient Attachments page. It did not specify loading those images when editing the note.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Display and preserve saved image attachments when editing a visit note.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When a note is created with an image and saved, reopening the note for editing displays the saved image.",
+    "source": "stated",
+    "quote": "Create a note with one image, save it and reopen it: the saved image is visible.",
+    "status": "ok"
+   },
+   {
+    "id": "AC2",
+    "text": "When editing only the note text and saving, the existing image remains associated and is not duplicated.",
+    "source": "stated",
+    "quote": "Edit only the note text and save: the existing image remains and is not duplicated.",
+    "status": "ok"
+   },
+   {
+    "id": "AC3",
+    "text": "When adding another image during note editing and saving, both images appear when the note is reopened.",
+    "source": "stated",
+    "quote": "Add another image while editing and save: both images appear when the note is reopened.",
+    "status": "ok"
+   },
+   {
+    "id": "AC4",
+    "text": "Attachments belonging to other encounters are not displayed on the edit form for this note.",
+    "source": "stated",
+    "quote": "Attachments from other encounters are not shown as belonging to this note.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "visit note",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-notes-app/src/notes/visit-notes-form.workspace.tsx",
+     "patient-chart/packages/esm-patient-notes-app/src/notes/visit-notes.resource.ts"
+    ]
+   },
+   {
+    "name": "Attachments page",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-attachments-app/src/attachments/attachment-thumbnail.component.tsx",
+     "patient-chart/packages/esm-patient-attachments-app/src/attachments-config-schema.ts"
+    ]
+   },
+   {
+    "name": "Visits",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visits-widget/visit-context/visit-context-switcher.modal.tsx",
+     "patient-chart/packages/esm-patient-chart-app/src/visit/visit-history-table/visit-type-cell.component.tsx"
+    ]
+   },
+   {
+    "name": "Timeline",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "patient-chart/packages/esm-patient-tests-app/src/test-results/grouped-timeline/grouped-timeline-types.ts",
+     "patient-chart/packages/esm-patient-tests-app/src/test-results/grouped-timeline/timeline-data-group.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "Editing visit notes and viewing encounter attachments are core capabilities of the OpenMRS 3 patient chart.",
+  "testable": true,
+  "reason": "The workflow can be completely tested in the browser by creating a visit note with attachments, saving it, and verifying attachments when reopening and editing.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 2149,
+   "output_tokens": 894,
+   "cost_usd": 0.00496425,
+   "cost_estimated": true,
+   "seconds": 180.01,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}

@@ -27,5 +27,6 @@ class SpecBridgeState(TypedDict, total=False):
     round: int
     # written by nodes
     ticket: dict             # intake
+    understanding: dict      # understand
     trace: Annotated[list, operator.add]     # {node, round, seconds} per node, in run order
     spent: Annotated[dict, add_spent]        # {tokens, cost, seconds}

@@ -37,6 +37,7 @@ class Reply:
     seconds: float
     attempts: int
     byok: bool | None = None  # True when OpenRouter used the team's own provider key (BYOK)
+    cost_estimated: bool = False  # True when cost_usd is worked out from list prices (provider sent none)
 
 
 class OpenAIChatBrain:
@@ -64,8 +65,11 @@ class OpenAIChatBrain:
                 with urllib.request.urlopen(req, timeout=self.profile.get("timeout_seconds", 180)) as resp:
                     return json.load(resp)
             except urllib.error.HTTPError as err:
-                detail = err.read().decode(errors="ignore")[:300]
-                if err.code not in RETRY_STATUS or attempt == self.http_retries:
+                raw = err.read().decode(errors="ignore")
+                detail = _error_detail(raw)
+                # a used-up daily quota cannot succeed before it resets: retrying only wastes time
+                daily = err.code == 429 and re.search(r"PerDay|per day", raw, re.I)
+                if err.code not in RETRY_STATUS or attempt == self.http_retries or daily:
                     raise BrainError(f"{self.provider} returned {err.code} after {attempt + 1} tries: {detail}") from None
                 hint = err.headers.get("Retry-After", "")
                 if hint.isdigit():  # busy servers (e.g. free-tier keys) say how long to wait
@@ -122,12 +126,21 @@ class OpenAIChatBrain:
         if problem:
             raise BrainError(f"{self.name} brain gave invalid JSON twice: {problem}")
         costs = [u["cost"] for u in usage_total if u.get("cost") is not None]
-        return Reply(text=text, data=data, brain=self.name, provider=self.provider, model=model,
-                     input_tokens=sum(u.get("prompt_tokens", 0) for u in usage_total),
-                     output_tokens=sum(u.get("completion_tokens", 0) for u in usage_total),
-                     cost_usd=sum(costs) if costs else None,
+        input_tokens = sum(u.get("prompt_tokens", 0) for u in usage_total)
+        output_tokens = sum(_output_tokens(u) for u in usage_total)
+        cost, estimated = (sum(costs), False) if costs else (self._list_price(input_tokens, output_tokens), True)
+        return Reply(text=text, data=data, brain=self.name, provider=self.provider, model=model.removeprefix("models/"),
+                     input_tokens=input_tokens, output_tokens=output_tokens,
+                     cost_usd=cost, cost_estimated=estimated and cost is not None,
                      seconds=round(time.time() - start, 2), attempts=attempts,
                      byok=any(u.get("is_byok") for u in usage_total) if any("is_byok" in u for u in usage_total) else None)
+
+    def _list_price(self, input_tokens, output_tokens):
+        """Cost at the profile's list price (price_usd_per_mtok), for providers that do not report cost."""
+        price = self.profile.get("price_usd_per_mtok")
+        if not price:
+            return None
+        return (input_tokens * price["input"] + output_tokens * price["output"]) / 1e6
 
     def model_available(self):
         """True if the server lists this brain's model (GET /models)."""
@@ -135,7 +148,7 @@ class OpenAIChatBrain:
             {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}))
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
-                ids = {m["id"] for m in json.load(resp).get("data", [])}
+                ids = {m["id"].removeprefix("models/") for m in json.load(resp).get("data", [])}
         except (urllib.error.URLError, TimeoutError) as err:
             raise BrainError(f"cannot reach {self.provider} at {self.base_url}: {err}") from None
         return self.model in ids
@@ -163,6 +176,31 @@ def load_brain(name=None, env=None, config_path=CONFIG):
         if not api_key:
             raise BrainError(f"brain '{name}' needs {profile['api_key_env']} in .env")
     return adapter(name, profile, api_key)
+
+
+def _error_detail(raw):
+    """The useful part of an error body: the provider's message (Google's quota message says which limit was hit
+    and when it resets, after a long preamble), else the start of the body."""
+    try:
+        body = json.loads(raw)
+        err = (body[0] if isinstance(body, list) else body).get("error", {})
+        message = re.sub(r"\s+", " ", str(err.get("message", ""))).strip()
+        if message:
+            return f"{err.get('status') or err.get('code', '')}: {message}"[:600]
+    except (ValueError, AttributeError, IndexError):
+        pass
+    return re.sub(r"\s+", " ", raw)[:300]
+
+
+def _output_tokens(usage):
+    """Answer tokens including hidden thinking: some providers (Google) leave thinking out of completion_tokens
+    but count it in total_tokens; others report it in completion_tokens_details."""
+    completion = usage.get("completion_tokens", 0)
+    thinking = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0
+    total = usage.get("total_tokens")
+    if total is not None and total > usage.get("prompt_tokens", 0) + completion:
+        return total - usage.get("prompt_tokens", 0)
+    return max(completion, thinking)
 
 
 def _messages(prompt, system):

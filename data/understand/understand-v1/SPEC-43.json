@@ -1,0 +1,75 @@
+{
+ "ticket": {
+  "key": "SPEC-43",
+  "url": "https://rooks101.atlassian.net/browse/SPEC-43",
+  "type": "Bug",
+  "status": "To Do",
+  "title": "Display \"Dispensed\" Status in Prescription Details Section (Consistent with \"Cancelled\" and \"Paused\")",
+  "text": "Display \"Dispensed\" Status in Prescription Details Section (Consistent with \"Cancelled\" and \"Paused\")\n\nThe \"Dispensed\" status currently appears only in the History and Comments section of the Medication Dispensing module, whereas other statuses such as \"Cancelled\" and \"Paused\" are displayed in the Prescription Details section.\n\n### Expected:\n\nOnce a medication is dispensed, the \"Dispensed\" status should be displayed in the Prescription Details section—just like \"Cancelled\" and \"Paused\" statuses following cancel or pause actions. This will ensure a consistent and streamlined user experience and reduce the risk of errors.",
+  "labels": [
+   "golden-v0"
+  ],
+  "flags": []
+ },
+ "understanding": {
+  "intent": "Display the 'Dispensed' status in the Prescription Details section of the Medication Dispensing module once a medication is dispensed.",
+  "criteria": [
+   {
+    "id": "AC1",
+    "text": "When a medication is dispensed, the 'Dispensed' status is displayed in the Prescription Details section.",
+    "source": "stated",
+    "quote": "Once a medication is dispensed, the \"Dispensed\" status should be displayed in the Prescription Details section—just like \"Cancelled\" and \"Paused\" statuses following cancel or pause actions.",
+    "status": "ok"
+   }
+  ],
+  "screens": [
+   {
+    "name": "Medication Dispensing module",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "core/packages/framework/esm-config/src/module-config/module-config.ts",
+     "patient-chart/packages/esm-form-entry-app/src/app/openmrs-api/openmrs-api.module.ts"
+    ]
+   },
+   {
+    "name": "Prescription Details section",
+    "role": "changed",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/prescriptions/prescription-details.component.tsx",
+     "dispensing-app/src/prescriptions/prescription-expanded.component.tsx"
+    ]
+   },
+   {
+    "name": "History and Comments section",
+    "role": "used",
+    "found_in_code": true,
+    "where": [
+     "dispensing-app/src/history/history-and-comments.component.tsx",
+     "dispensing-app/src/prescriptions/prescription-expanded.component.tsx"
+    ]
+   }
+  ],
+  "roles": [],
+  "questions": [],
+  "risks": [],
+  "domain_fit": "fits",
+  "domain_reason": "The request updates status indicators within the dispensing module of OpenMRS 3.",
+  "testable": true,
+  "reason": "The display of the 'Dispensed' status in the Prescription Details section can be validated directly in the browser after dispensing a medication.",
+  "meta": {
+   "model": "gemini-3.8-flash",
+   "brain": "llm",
+   "prompt_version": "understand-v1 (2026-11-09)",
+   "input_tokens": 1731,
+   "output_tokens": 643,
+   "cost_usd": 0.0037095,
+   "cost_estimated": true,
+   "seconds": 114.02,
+   "attempts": 1,
+   "byok": null,
+   "screen_check": "done"
+  }
+ }
+}
