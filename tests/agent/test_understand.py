@@ -349,7 +349,7 @@ def test_finish_never_trusts_ai_ids():
 
 def test_understand_in_the_graph(start):
     r = start("SPEC-66")
-    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand"]
+    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator"]
     und = r.state["understanding"]
     assert "injection-attempt" in kinds(und)          # from intake's flag, whatever the AI said
     assert r.state["spent"]["cost"] == 0.0012 and r.state["spent"]["tokens"] == 1200
@@ -362,7 +362,7 @@ def test_ai_failure_in_the_graph_can_be_resumed(start, records):
         start("SPEC-1", run_id="busy-1", nodes={"understand": broken})
     assert json.loads((records / "SPEC-1" / "busy-1.json").read_text())["status"] == "error"
     r = start(None, run_id="busy-1", resume=True)
-    assert r.status == "complete" and [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand"]
+    assert r.status == "complete" and [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator"]
 
 
 # --- live: the trick tickets (about $0.005 per ticket at list price; $0 on the free tier) ----------------------------------------

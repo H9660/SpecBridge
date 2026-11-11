@@ -8,7 +8,7 @@ PROJECT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT))
 
 from specbridge.agent.limits import Settings  # noqa: E402
-from specbridge.agent.nodes import intake, understand  # noqa: E402
+from specbridge.agent.nodes import intake, orchestrator, understand  # noqa: E402
 from specbridge.atlassian import JiraError  # noqa: E402
 from specbridge.brain import BrainError, Reply  # noqa: E402
 
@@ -82,6 +82,27 @@ def fake_understand(brain=None, lookup=None, catalogue=None):
                                 catalogue=catalogue or (lambda text: KNOWN_SCREENS))
 
 
+def fake_search(files_by_word=None):
+    """A stand-in for the code search: each word of the query found in files_by_word adds its files, in order;
+    unknown queries get two generic files. Returns hits shaped like CodeIndex.search_code."""
+    files_by_word = files_by_word or {}
+
+    def search(text, k):
+        paths = []
+        for word, files in files_by_word.items():
+            if word in text.lower():
+                paths += [f for f in files if f not in paths]
+        paths = paths or ["src/app/root.component.tsx", "src/app/config-schema.ts"]
+        return [{"repo": "patient-chart", "path": p, "piece": p.split("/")[-1].split(".")[0], "kind": "component",
+                 "lines": [1, 40], "appears_in": [], "found_by": "search"} for p in paths[:k]]
+    search.mode = "fake"
+    return search
+
+
+def fake_orchestrator(brain=None, search=None):
+    return orchestrator.make_node(brain=brain or FakeBrain(), env={}, search=search or fake_search())
+
+
 def fake_intake(jira=None):
     return intake.make_node(env=JIRA_ENV, client=jira or FakeJira(), sleep=lambda s: None)
 
@@ -128,6 +149,7 @@ def start(records, fake_brain):
         kwargs.setdefault("brain_check", fake_brain)
         kwargs.setdefault("settings", Settings())
         kwargs.setdefault("env", {"BRAIN": "llm", "GEMINI_API_KEY": FAKE_KEY})
-        kwargs["nodes"] = {"intake": fake_intake(), "understand": fake_understand(), **(kwargs.get("nodes") or {})}
+        kwargs["nodes"] = {"intake": fake_intake(), "understand": fake_understand(), "orchestrator": fake_orchestrator(),
+                           **(kwargs.get("nodes") or {})}
         return run_ticket(ticket_ref, **kwargs)
     return run

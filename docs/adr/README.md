@@ -10,6 +10,7 @@ One file per significant design decision: what was decided, why, what it costs, 
 |---|---|---|---|
 | [D20](0020-ground-understand-in-registered-screens.md) | `understand` is given the real screens from the code, picked per ticket at run time | Accepted | 2026-11-09 |
 | [D21](0021-regression-check-for-backend-only-changes.md) | Backend-only changes to a real screen get a regression check; other untestable tickets go to clarify (future: re-run from `understand` when the PM answers in Jira) | Accepted (re-run part: future) | 2026-11-09 |
+| [D22](0022-orchestrator-code-proposes-ai-refines.md) | The orchestrator splits the work in three steps: code proposes, one AI call refines, code checks | Accepted | 2026-11-10 |
 
 ## Template
 

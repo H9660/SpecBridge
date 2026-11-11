@@ -90,6 +90,20 @@ def main(argv=None):
             print(f"  {i}. {q}")
         print(f"  next step: {c['next_step']}")
         print("--- Jira comment (posted by publish, later) ---\n" + c["comment"] + "\n---")
+    items = result.state.get("work_items")
+    if items is not None and result.state.get("orchestration"):
+        o = result.state["orchestration"]
+        print(f"plan:   {len(items)} worker(s){' + e2e worker' if result.state.get('e2e') else ''}; search {o['search']}; "
+              f"grouping by {o['ai'].get('used')}" + (f" ({o['ai']['why']})" if o["ai"].get("why") else ""))
+        for it in items:
+            print(f"  {it['id']} {', '.join(it['criterion_ids'])}: {it['slice']['focus'] or '-'}")
+            print("     starts at: " + "; ".join(e["path"].split("/")[-1] + (" (shared)" if e["shared"] else "")
+                                           for e in it["seed_evidence"][:4]))
+        for s in result.state.get("skipped", []):
+            print(f"  skipped {s['criterion_id']}: {s['reason']}")
+        b = o["budget"]
+        print(f"budget: ${b['remaining']:.4f} left of ${b['cap']}; ${b['per_worker']:.4f} per worker, "
+              f"reserve ${b['reserve']:.4f}, {b['tool_calls']} tool calls each")
     print(f"run:    {result.run_id}")
     print(f"status: {result.status}" + (f" ({result.message})" if result.message else ""))
     print(f"record: {result.record_path}")

@@ -177,15 +177,15 @@ def test_not_testable_goes_to_clarify(start):
 
 def test_testable_ticket_skips_clarify_and_says_why_it_stopped(start):
     r = start("SPEC-6")
-    assert trace(r) == ["START", "intake", "understand"] and "clarification" not in r.state
-    assert r.status == "complete" and "orchestrator (node 4) is not built yet" in r.message
+    assert trace(r) == ["START", "intake", "understand", "orchestrator"] and "clarification" not in r.state
+    assert r.status == "complete" and "workers (node 5) are not built yet" in r.message
     assert json.loads(r.record_path.read_text())["note"] == r.message
 
 
 def test_regression_scope_skips_clarify(start):
     r = start("SPEC-6", nodes={"understand": understand_saying(
         risks=[{"kind": "backend-only", "detail": "refactor"}], testable=False)})
-    assert trace(r) == ["START", "intake", "understand"]
+    assert trace(r) == ["START", "intake", "understand", "orchestrator"]
     assert r.state["understanding"]["test_scope"] == "regression"
 
 

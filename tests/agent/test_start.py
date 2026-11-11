@@ -29,9 +29,9 @@ def test_good_run_creates_state_trace_and_record(start, records):
     r = start("  SPEC-1  ")
     s = r.state
     assert r.status == "complete"
-    assert s["run_id"] == r.run_id and s["mode"] == "dry-run" and s["ticket_ref"] == "SPEC-1" and s["round"] == 0
+    assert s["run_id"] == r.run_id and s["mode"] == "dry-run" and s["ticket_ref"] == "SPEC-1" and s["round"] == 1
     assert isinstance(s["started_at"], float)
-    assert [t["node"] for t in s["trace"]] == ["START", "intake", "understand"]
+    assert [t["node"] for t in s["trace"]] == ["START", "intake", "understand", "orchestrator"]
     assert r.record_path == records / "SPEC-1" / f"{r.run_id}.json"
     rec = record_of(r)
     assert rec["status"] == "complete" and rec["error"] is None
@@ -127,7 +127,7 @@ def test_crashed_run_can_be_resumed(start):
         start("SPEC-63", run_id="crash-2", nodes={"intake": boom})
     r = start(None, run_id="crash-2", resume=True)
     assert r.status == "complete"
-    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand"]
+    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator"]
 
 
 def test_ctrl_c_writes_interrupted_and_can_resume(start, records):
@@ -145,7 +145,7 @@ def test_paused_run_resumes_without_repeating_nodes(start):
     assert [t["node"] for t in paused.state["trace"]] == ["START"]
     done = start(None, run_id="pause-1", resume=True)
     assert done.status == "complete"
-    assert [t["node"] for t in done.state["trace"]] == ["START", "intake", "understand"]
+    assert [t["node"] for t in done.state["trace"]] == ["START", "intake", "understand", "orchestrator"]
     assert done.state["started_at"] == paused.state["started_at"]
 
 

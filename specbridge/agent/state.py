@@ -29,6 +29,11 @@ class SpecBridgeState(TypedDict, total=False):
     ticket: dict             # intake
     understanding: dict      # understand
     clarification: dict      # clarify (only for tickets without test cases)
+    brief: dict              # orchestrator: shared, read-only context for every worker
+    work_items: list         # orchestrator: {id, criterion_ids, slice, seed_evidence, budget} per worker
+    e2e: dict | None         # orchestrator: the end-to-end worker's input, if it runs
+    skipped: list            # orchestrator: criteria no worker gets, with the reason
+    orchestration: dict      # orchestrator: how the plan was made (search mode, AI or code, budget)
     status: str              # set by a node that decides the outcome, e.g. clarify: "needs-clarification"
     trace: Annotated[list, operator.add]     # {node, round, seconds} per node, in run order
     spent: Annotated[dict, add_spent]        # {tokens, cost, seconds}
