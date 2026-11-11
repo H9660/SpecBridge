@@ -49,7 +49,7 @@ Read these before changing anything substantial:
 
 **1. The brain (`specbridge/brain.py`)**
 - The only way to call a model. Get one with `load_brain()`, then use `ask()` or `ask_json(prompt, schema)`.
-- Profiles are in `config/brains.json`. `BRAIN=llm` is Gemini called directly at Google's OpenAI-compatible endpoint with `GEMINI_API_KEY` (default `gemini-3.8-flash`; OpenRouter was dropped on 2026-11-09). Google does not report cost, so `Reply.cost_usd` is estimated from `price_usd_per_mtok` (`cost_estimated=True`), `BRAIN=slm` is Ollama, and `BRAIN_MODEL` overrides the model.
+- Profiles are in `config/brains.json`. `BRAIN=llm` is Gemini called directly at Google's OpenAI-compatible endpoint with `GEMINI_API_KEY` (main model `gemini-3.6-flash` since 2026-11-11, when 3.8-flash kept hanging; per-role models in `roles`; OpenRouter was dropped on 2026-11-09). Google does not report cost, so `Reply.cost_usd` is estimated from `price_usd_per_mtok` (`cost_estimated=True`), `BRAIN=slm` is Ollama, and `BRAIN_MODEL` overrides the model.
 - `ask_json` validates against a JSON schema and retries once, retries busy servers, and records tokens, cost and time per answer.
 - Gemini thinks before it answers, and the thinking counts against `max_tokens`, so give every call hundreds of tokens of headroom.
 
@@ -84,7 +84,7 @@ Read these before changing anything substantial:
   - **D11, D12, D13:** every run is checkpointed and recorded to `data/runs/`. Prompt versions go into the record. Eval mode runs the same graph without publishing.
 
 **4. Existing code the agent reuses**
-- `specbridge/atlassian.py`: the Jira/Confluence client (moved from `scripts/` on 2026-11-07). It can read issues (`get_issue`) and create issues; page writes and comments still need adding for `publish`. Errors are `JiraError` with `.status`.
+- `specbridge/atlassian.py`: the Jira/Confluence client (moved from `scripts/` on 2026-11-07). It reads issues (`get_issue`), creates issues, and - for the `publish` node only - finds, creates and updates pages, labels, page properties, page comments and Jira comments. Errors are `JiraError` with `.status`.
 - `specbridge/ticket_text.py`: Jira rich text to structured plain text, secret redaction, and detection of lines aimed at the AI (used by `intake`).
 - Everything in `specbridge/`.
 - Other scripts in `scripts/` are one-time setup or golden-set builders.

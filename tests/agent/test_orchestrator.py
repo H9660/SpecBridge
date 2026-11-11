@@ -251,10 +251,10 @@ def test_same_input_same_plan():
 
 def test_plan_in_the_graph_and_the_record(start):
     r = start("SPEC-66")
-    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"]
+    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge", "reviewer", "render", "save_local"]
     rec = json.loads(r.record_path.read_text())
     assert rec["state"]["work_items"] and rec["state"]["brief"]["ticket"] == "SPEC-66"
-    assert rec["note"] == "stopped after merge: the reviewer (node 8) is not built yet"
+    assert rec["note"] == ""
 
 
 # --- on the real code library (no AI) -----------------------------------------------------------------

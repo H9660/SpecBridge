@@ -14,7 +14,8 @@ RUNS = PROJECT / "data" / "runs"
 SNAPSHOTS = PROJECT / "data" / "snapshots.json"
 TICKET_KEY = re.compile(r"[A-Z][A-Z0-9]+-\d+")
 KEPT = ("ticket", "understanding", "clarification", "brief", "work_items", "e2e", "skipped",
-        "orchestration", "results", "plan")   # grows as nodes are added
+        "orchestration", "results", "plan", "review", "page", "saved", "published")   # grows as nodes are added
+PAGE_FILES_ONLY = ("html", "markdown")   # copies of the page that save_local writes as files, not kept here
 
 
 def frozen_commits():
@@ -23,6 +24,12 @@ def frozen_commits():
         return {name: r["commit"] for name, r in repos.items()}
     except (OSError, KeyError, ValueError):
         return {}
+
+
+def _kept(key, value):
+    if key == "page" and isinstance(value, dict):
+        return {k: v for k, v in value.items() if k not in PAGE_FILES_ONLY}
+    return value
 
 
 def path_for(state, records_dir=RUNS):
@@ -45,7 +52,7 @@ def write(state, settings, status, records_dir=RUNS, error=None, brain=None, not
         "wall_seconds": round(now - state.get("started_at", now), 3),
         "rounds": state.get("round", 0), "spent": state.get("spent", {}), "trace": state.get("trace", []),
         "brain": brain, "settings": asdict(settings), "frozen_commits": frozen_commits(),
-        "state": {k: state.get(k) for k in KEPT},
+        "state": {k: _kept(k, state.get(k)) for k in KEPT},
     }
     path.write_text(json.dumps(record, indent=2, default=str), encoding="utf-8")
     return path

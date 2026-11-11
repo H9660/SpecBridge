@@ -146,7 +146,10 @@ def test_e2e_crash_does_not_stop_the_criterion_workers(start):
     r = start("SPEC-6", nodes=nodes(boom))
     by_id = {res["work_item_id"]: res for res in r.state["results"]}
     assert by_id["E2E"]["status"] == "error" and "e2e exploded" in by_id["E2E"]["error"]
-    assert by_id["W1"]["status"] == by_id["W2"]["status"] == "complete" and r.status == "incomplete"
+    assert by_id["W1"]["status"] == by_id["W2"]["status"] == "complete"
+    # flows are not criteria: every criterion is covered, so the ticket is complete; the crash stays on record
+    assert r.status == "complete" and {"id": "E2E", "status": "error"}.items() <= \
+        next(w for w in r.state["plan"]["workers"] if w["id"] == "E2E").items()
 
 
 def test_e2e_mode_is_only_used_for_e2e_items():

@@ -31,7 +31,7 @@ def test_good_run_creates_state_trace_and_record(start, records):
     assert r.status == "complete"
     assert s["run_id"] == r.run_id and s["mode"] == "dry-run" and s["ticket_ref"] == "SPEC-1" and s["round"] == 1
     assert isinstance(s["started_at"], float)
-    assert [t["node"] for t in s["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"]
+    assert [t["node"] for t in s["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge", "reviewer", "render", "save_local"]
     assert r.record_path == records / "SPEC-1" / f"{r.run_id}.json"
     rec = record_of(r)
     assert rec["status"] == "complete" and rec["error"] is None
@@ -72,7 +72,6 @@ def test_record_never_contains_the_api_key(start):
     ({"ticket_ref": None}, "give a ticket URL or key"),
     ({"ticket_ref": "SPEC-1 " + "x" * 2000}, "at most 2000"),
     ({"mode": "bogus"}, "unknown mode"),
-    ({"mode": "live"}, "live mode needs the publish node"),
     ({"resume": True}, "--resume needs --run-id"),
     ({"run_id": "../../etc/passwd"}, "a run id may only use"),
     ({"run_id": ""}, "a run id may only use"),
@@ -127,7 +126,7 @@ def test_crashed_run_can_be_resumed(start):
         start("SPEC-63", run_id="crash-2", nodes={"intake": boom})
     r = start(None, run_id="crash-2", resume=True)
     assert r.status == "complete"
-    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"]
+    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge", "reviewer", "render", "save_local"]
 
 
 def test_ctrl_c_writes_interrupted_and_can_resume(start, records):
@@ -145,7 +144,7 @@ def test_paused_run_resumes_without_repeating_nodes(start):
     assert [t["node"] for t in paused.state["trace"]] == ["START"]
     done = start(None, run_id="pause-1", resume=True)
     assert done.status == "complete"
-    assert [t["node"] for t in done.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"]
+    assert [t["node"] for t in done.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge", "reviewer", "render", "save_local"]
     assert done.state["started_at"] == paused.state["started_at"]
 
 
@@ -209,7 +208,7 @@ def test_broken_config_is_refused(tmp_path, text, message):
 
 # --- brain check (preflight) -----------------------------------------------------------------------
 
-MODELS = {"data": [{"id": "models/gemini-3.8-flash"}, {"id": "models/gemini-4-argon"}]}
+MODELS = {"data": [{"id": "models/gemini-3.6-flash"}, {"id": "models/gemini-3.8-flash"}, {"id": "models/gemini-4-argon"}]}
 
 
 def fake_fetch(answers):
@@ -232,7 +231,7 @@ ENV = {"BRAIN": "llm", "GEMINI_API_KEY": FAKE_KEY}
 def test_brain_check_passes_with_one_call():
     fetch = fake_fetch({"models": MODELS})
     info = check_brain(ENV, fetch=fetch)
-    assert info["network_checked"] and (info["provider"], info["model"]) == ("google", "gemini-3.8-flash")
+    assert info["network_checked"] and (info["provider"], info["model"]) == ("google", "gemini-3.6-flash")
     assert [u for u, _ in fetch.calls] == ["https://generativelanguage.googleapis.com/v1beta/openai/models"]
     assert fetch.calls[0][1] == {"Authorization": f"Bearer {FAKE_KEY}"}
     assert "estimates at list price" in info["warnings"][0]
@@ -250,7 +249,7 @@ def test_offline_brain_check_makes_no_call():
     (ENV, {"models": preflight.HTTPStatus(400)}, "google rejected GEMINI_API_KEY"),
     (ENV, {"models": preflight.HTTPStatus(401)}, "google rejected GEMINI_API_KEY"),
     (ENV, {"models": preflight.HTTPStatus(403)}, "google rejected GEMINI_API_KEY"),
-    (ENV, {"models": {"data": [{"id": "models/other-model"}]}}, "'gemini-3.8-flash' is not offered"),
+    (ENV, {"models": {"data": [{"id": "models/other-model"}]}}, "'gemini-3.6-flash' is not offered"),
     ({**ENV, "BRAIN_MODEL": "gemini-typo"}, {"models": MODELS}, "'gemini-typo' is not offered"),
     (ENV, {"models": urllib.error.URLError("no route")}, "cannot reach google"),
     (ENV, {"models": TimeoutError()}, "cannot reach google"),
@@ -295,7 +294,6 @@ def test_cli_runs_a_ticket(records):
 
 @pytest.mark.parametrize("args, message", [
     (["SPEC-1", "--mode", "bogus"], "unknown mode"),
-    (["SPEC-1", "--mode", "live"], "live mode needs the publish node"),
     (["   "], "give a ticket URL or key"),
     (["--resume"], "--resume needs --run-id"),
 ])

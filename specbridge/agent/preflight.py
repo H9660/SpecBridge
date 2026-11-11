@@ -67,3 +67,26 @@ def check_brain(env=None, network=True, fetch=fetch_json):
 
 def _reason(err):
     return getattr(err, "reason", None) or type(err).__name__
+
+
+def check_atlassian(env=None, network=True, client_factory=None):
+    """Live mode only, before any AI call: the Atlassian settings are set and (online) the Confluence space can be
+    read with them. Returns {"site", "space", "network_checked"}; raises PreflightError otherwise."""
+    from specbridge.atlassian import Atlassian, missing_settings
+    from specbridge.env import load_env
+    env = load_env() if env is None else env
+    missing = missing_settings(env)
+    if missing:
+        raise PreflightError(f"live mode needs these settings in .env: {', '.join(missing)}")
+    info = {"site": env["ATLASSIAN_SITE"].rstrip("/"), "space": env["CONFLUENCE_SPACE_KEY"], "network_checked": network}
+    if not network:
+        return info
+    client = (client_factory or Atlassian)(env)
+    try:
+        space = client.confluence_space()
+    except Exception as err:  # noqa: BLE001 - any failure here means publishing would fail too
+        raise PreflightError(f"cannot read Confluence space {info['space']} at {info['site']}: "
+                             f"{str(err)[:200]}") from None
+    if not space:
+        raise PreflightError(f"Confluence space {info['space']} was not found at {info['site']}")
+    return info

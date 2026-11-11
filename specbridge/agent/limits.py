@@ -1,5 +1,6 @@
 """Agent limits (ARCHITECTURE.md D9, D18, D19) from config/agent.json. A missing file means the defaults."""
 import json
+import time
 from dataclasses import dataclass, fields
 
 from specbridge.env import PROJECT, load_env
@@ -68,3 +69,15 @@ def load_settings(env=None, config_path=CONFIG):
         brain = env.get("BRAIN") or "llm"
         values["max_concurrency"] = values["max_concurrency"].get(brain, Settings.max_concurrency)
     return Settings(**{k: _check(k, v) for k, v in values.items()})
+
+
+def limit_reached(state, settings, now=None):
+    """Why another review round may not start, or None (D9)."""
+    now = now or time.time()
+    if state.get("round", 0) >= settings.max_rounds:
+        return "max_rounds"
+    if (state.get("spent") or {}).get("cost", 0) >= settings.cost_cap_usd:
+        return "cost_cap"
+    if now - state.get("started_at", now) >= settings.time_cap_seconds:
+        return "time_cap"
+    return None

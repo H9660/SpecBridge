@@ -7,7 +7,7 @@ import operator
 from typing import Annotated, Literal, TypedDict
 
 MODES = ("dry-run", "eval", "live")
-ENABLED_MODES = ("dry-run", "eval")   # live needs the publish node (node 11)
+ENABLED_MODES = ("dry-run", "eval", "live")   # live publishes to Confluence and Jira (node 11)
 
 
 def add_spent(a, b):
@@ -36,6 +36,10 @@ class SpecBridgeState(TypedDict, total=False):
     orchestration: dict      # orchestrator: how the plan was made (search mode, AI or code, budget)
     results: Annotated[list, operator.add]   # one WorkerResult per worker (parallel workers append)
     plan: dict               # merge: the ticket's test plan (criteria coverage, TC cases, EV evidence, ...)
+    review: dict             # reviewer: verdict per criterion, flags, scores, retry list, final status
+    page: dict               # render: title, labels, storage (Confluence), html, markdown, comment, summary
+    saved: dict              # save_local: folder, files (html, markdown, storage, comment), bytes, warnings, error
+    published: dict          # publish: page id / url / action / version, Jira comment id / action, error, fallback
     status: str              # set by a node that decides the outcome, e.g. clarify: "needs-clarification"
     trace: Annotated[list, operator.add]     # {node, round, seconds} per node, in run order
     spent: Annotated[dict, add_spent]        # {tokens, cost, seconds}

@@ -169,23 +169,24 @@ def trace(r):
 def test_not_testable_goes_to_clarify(start):
     r = start("SPEC-6", nodes={"understand": understand_saying(
         risks=[{"kind": "backend-only", "detail": "server only"}], screens=[], testable=False)})
-    assert trace(r) == ["START", "intake", "understand", "clarify"]
+    assert trace(r) == ["START", "intake", "understand", "clarify", "render", "save_local"]
     assert r.status == "needs-clarification" and r.message == ""
     rec = json.loads(r.record_path.read_text())
     assert rec["status"] == "needs-clarification" and rec["state"]["clarification"]["category"] == "backend-only"
+    assert rec["state"]["page"]["summary"]["kind"] == "clarification"
 
 
 def test_testable_ticket_skips_clarify_and_says_why_it_stopped(start):
     r = start("SPEC-6")
-    assert trace(r) == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"] and "clarification" not in r.state
-    assert r.status == "complete" and "the reviewer (node 8) is not built yet" in r.message
+    assert trace(r) == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge", "reviewer", "render", "save_local"] and "clarification" not in r.state
+    assert r.status == "complete" and r.message == ""
     assert json.loads(r.record_path.read_text())["note"] == r.message
 
 
 def test_regression_scope_skips_clarify(start):
     r = start("SPEC-6", nodes={"understand": understand_saying(
         risks=[{"kind": "backend-only", "detail": "refactor"}], testable=False)})
-    assert trace(r) == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"]
+    assert trace(r) == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge", "reviewer", "render", "save_local"]
     assert r.state["understanding"]["test_scope"] == "regression"
 
 
@@ -194,5 +195,5 @@ def test_paused_before_clarify_resumes(start):
     paused = start("SPEC-6", run_id="clar-1", nodes={"understand": u}, interrupt_before=["clarify"])
     assert paused.status == "paused" and trace(paused) == ["START", "intake", "understand"]
     done = start(None, run_id="clar-1", resume=True, nodes={"understand": u})
-    assert done.status == "needs-clarification" and trace(done)[-1] == "clarify"
+    assert done.status == "needs-clarification" and trace(done)[-3:] == ["clarify", "render", "save_local"]
     assert done.state["clarification"]["category"] == "off-domain"

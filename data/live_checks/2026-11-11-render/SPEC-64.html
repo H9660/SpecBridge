@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UAT SPEC-64: Show allergy alerts on the Dental Chart tab</title>
+<style>
+:root { --bg:#ffffff; --fg:#1d2125; --muted:#5e6c84; --line:#dfe1e6; --head:#f4f5f7;
+        --ok:#e3fcef; --okfg:#006644; --warn:#fffae6; --warnfg:#974f0c; --stop:#ffebe6; --stopfg:#bf2600;
+        --info:#deebff; --infofg:#0747a6; --grey:#f4f5f7; --greyfg:#42526e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1d2125; --fg:#dee4ea; --muted:#9fadbc; --line:#38414a;
+        --head:#22272b; --ok:#1c3329; --okfg:#7ee2b8; --warn:#3a2e14; --warnfg:#f5cd47; --stop:#42221f;
+        --stopfg:#fd9891; --info:#1c2b41; --infofg:#85b8ff; --grey:#2c333a; --greyfg:#b6c2cf; } }
+body { background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; margin:0 auto;
+       max-width:1200px; padding:16px; }
+h1 { font-size:1.6em; } h2 { margin-top:1.8em; border-bottom:1px solid var(--line); } h3 { margin-top:1.4em; }
+table { border-collapse:collapse; width:100%; margin:.6em 0; display:block; overflow-x:auto; }
+th, td { border:1px solid var(--line); padding:6px 8px; vertical-align:top; text-align:left; }
+th { background:var(--head); } td p, td ul, td ol { margin:.2em 0; } td ol, td ul { padding-left:1.3em; }
+.banner { border-radius:6px; padding:8px 14px; margin:1em 0; }
+.tag { border-radius:3px; padding:1px 6px; font-size:.75em; font-weight:700; white-space:nowrap; }
+.ok { background:var(--ok); color:var(--okfg); } .warn { background:var(--warn); color:var(--warnfg); }
+.stop { background:var(--stop); color:var(--stopfg); } .info { background:var(--info); color:var(--infofg); }
+.grey { background:var(--grey); color:var(--greyfg); }
+.banner p { color:var(--fg); } .banner p:first-child { color:inherit; }
+details { margin:.8em 0; } summary { cursor:pointer; font-weight:600; }
+code { font-size:.9em; } a { color:var(--infofg); }
+</style>
+</head>
+<body>
+<h1>UAT SPEC-64: Show allergy alerts on the Dental Chart tab</h1>
+<div class="banner stop"><p><strong>Needs clarification: no UAT test cases yet</strong></p><p>No UAT test cases yet: the ticket relies on a screen that is not in the app (Dental Chart tab).</p></div><p>Draft written by SpecBridge from the code at the frozen version, for <a href="https://rooks101.atlassian.net/browse/SPEC-64">SPEC-64</a>. Please review it before use.</p><h2>Why there are no test cases yet</h2><p>the ticket talks about a screen that does not exist in the code: Dental Chart tab</p><h2>What SpecBridge understood</h2><p><strong>Intent: </strong>Display a red allergy banner listing allergen names at the top of the Dental Chart tab when a patient has recorded allergies.</p><ul><li><strong>AC1</strong>: When opening the Dental Chart tab for a patient with at least one recorded allergy, a red allergy banner appears at the top of the tab.</li><li><strong>AC2</strong>: The allergy banner displays the names of the patient&#x27;s allergens.</li><li><strong>AC3</strong>: No allergy banner is shown if the patient has no recorded allergies.</li></ul><h3>Screens</h3><table><tbody><tr><th>Screen</th><th>New or existing</th><th>Changed or used</th><th>Where in the code</th></tr><tr><td><p>Dental Chart tab</p></td><td><p>existing</p></td><td><p>changed</p></td><td><p>-</p></td></tr><tr><td><p>allergy banner</p></td><td><p>new</p></td><td><p>changed</p></td><td><p>-</p></td></tr></tbody></table><h3>Risks</h3><ul><li>unknown-screen: not found in the code: Dental Chart tab</li></ul><h2>Questions for the PM</h2><ol><li>&quot;Dental Chart tab&quot; does not exist in the code: is it a new screen to be built, and where should it appear?</li></ol><h2>Next step</h2><p>Say whether the screen is new (and where it goes), or name the existing screen that is meant.</p><h2>Run details</h2><details><summary>Show the run details</summary><p><strong>Run: </strong><code>20261109-152155-13b864</code> · mode dry-run</p><p><strong>Started: </strong>2026-11-09 09:51 UTC · about 0.6 min to this page</p><p><strong>Cost: </strong>$0.008 (estimated from list prices) · 3,793 tokens</p><p><strong>Rounds: </strong>0 · <strong>Worker runs: </strong>0</p><p><strong>Models: </strong>gemini-3.6-flash</p><p><strong>Prompts: </strong>understand-v3 (2026-11-09), render-v1</p><p><strong>Limits: </strong>$0.25 per ticket, 2 rounds, 8 tool calls per worker</p><p><strong>Code version (frozen): </strong>billing-app @ 6a0f8098, core @ cf088d52, dispensing-app @ 7f604ab7, patient-chart @ 8ede2e3a, patient-management @ 37d3c1bc</p></details>
+</body>
+</html>

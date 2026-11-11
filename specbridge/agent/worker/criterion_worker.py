@@ -107,6 +107,19 @@ def _add(spent, reply):
 
 # --- the messages -------------------------------------------------------------------------------------
 
+def review_lines(s):
+    """A retry round: what the reviewer found wrong with the earlier test cases for these criteria."""
+    notes = s.get("review_notes") or []
+    if not notes:
+        return []
+    lines = ["", "This is a RETRY: a reviewer found these problems with the earlier test cases; fix them:"]
+    for n in notes:
+        lines += [f"- {n['criterion_id']}: {p}" for p in n.get("problems", [])]
+        if n.get("hint"):
+            lines.append(f"  hint for {n['criterion_id']}: {n['hint']}")
+    return lines
+
+
 def start_message(brief, item):
     s = item["slice"]
     lines = ["Shared brief (data):", json.dumps(brief, indent=1, ensure_ascii=False), "",
@@ -119,6 +132,7 @@ def start_message(brief, item):
         lines.append(f"Focus: {s['focus']}")
     if s.get("ticket_lines"):
         lines += ["", "Ticket lines about your criteria (data):", "<ticket>", *s["ticket_lines"], "</ticket>"]
+    lines += review_lines(s)
     lines += ["", "Starting files (pointers from a search; read the relevant ones):"]
     lines += [f"- {e['repo']}/{e['path']} [{e.get('piece') or '-'}, lines {e.get('lines')}]"
               + (" (also given to another worker)" if e.get("shared") else "") for e in item.get("seed_evidence", [])]
@@ -151,6 +165,7 @@ def cases_message(brief, item, evidence):
                      '(use criterion_id "regression")')
     if s.get("focus"):
         lines.append(f"Focus: {s['focus']}")
+    lines += review_lines(s)
     lines += ["", "Evidence: the code that was read (data):"]
     used = 0
     for e in evidence:

@@ -1,7 +1,9 @@
 """The main LangGraph graph (ARCHITECTURE.md, docs/architecture.drawio), built node by node.
 
-Now: START -> intake -> understand -> (test scope none: clarify -> END | full / regression: orchestrator ->
-Send -> criterion_worker x N (+ e2e_worker when 2+ workers) -> merge -> END, until the reviewer exists). `run_ticket` is START: it checks the request and the brain, creates the
+Now: START -> intake -> understand -> (test scope none: clarify -> render | full / regression: orchestrator ->
+(nothing to send or incomplete: render | Send -> criterion_worker x N (+ e2e_worker when 2+ workers) -> merge ->
+reviewer -> (weak criteria, once: orchestrator again | final: render))) -> (dry-run / eval: save_local | live: publish)
+-> END. `run_ticket` is START: it checks the request and the brain, creates the
 run, runs the graph with a checkpointer, and writes the run record however the run ends.
 
 Nodes are plain functions `node(state, settings)`; `build_graph` takes replacements, which is how
@@ -20,14 +22,14 @@ from langgraph.types import Send
 
 from specbridge.agent import preflight, run_record
 from specbridge.agent.limits import load_settings
-from specbridge.agent.nodes import clarify, intake, merge, orchestrator, understand
+from specbridge.agent.nodes import clarify, intake, merge, orchestrator, publish, render, reviewer, save_local, understand
 from specbridge.agent.state import ENABLED_MODES, MODES, SpecBridgeState, add_spent
 from specbridge.agent.worker import criterion_worker, e2e_worker
 
 DEFAULT_NODES = {"intake": intake.node, "understand": understand.node, "clarify": clarify.node,
                  "orchestrator": orchestrator.node, "criterion_worker": criterion_worker.run,
-                 "e2e_worker": e2e_worker.run, "merge": merge.node}
-NOT_BUILT_NOTE = "stopped after merge: the reviewer (node 8) is not built yet"
+                 "e2e_worker": e2e_worker.run, "merge": merge.node, "reviewer": reviewer.node,
+                 "render": render.node}
 MAX_REF_CHARS = 2000
 RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
@@ -79,10 +81,10 @@ def _worker_node(name, fn, settings):
 
 
 def route_after_orchestrator(state):
-    """One Send per work item, plus one for the e2e worker if planned (all in parallel); nothing to send -> END."""
+    """One Send per work item, plus one for the e2e worker if planned (all in parallel); nothing to send -> render."""
     items = state.get("work_items") or []
     if not items or state.get("status") == "incomplete":
-        return END
+        return "render"
     common = {"brief": state["brief"], "round": state.get("round", 1), "run_id": state.get("run_id")}
     sends = [Send("criterion_worker", {**common, "work_item": item}) for item in items]
     if state.get("e2e"):
@@ -90,22 +92,38 @@ def route_after_orchestrator(state):
     return sends
 
 
-def build_graph(nodes=None, settings=None, checkpointer=None, interrupt_before=None):
+def route_after_review(state):
+    """Weak criteria and a retry allowed -> the orchestrator plans round 2 for them; otherwise the review is final."""
+    return "orchestrator" if (state.get("review") or {}).get("retry") else "render"
+
+
+def route_after_render(state):
+    """dry-run and eval -> save_local (files); live -> publish (Confluence page + Jira comment)."""
+    return "publish" if state.get("mode") == "live" else "save_local"
+
+
+def build_graph(nodes=None, settings=None, checkpointer=None, interrupt_before=None, records_dir=None):
     settings = settings or load_settings()
-    fns = {**DEFAULT_NODES, **(nodes or {})}
+    fns = {**DEFAULT_NODES, "save_local": save_local.make_node(records_dir),
+           "publish": publish.make_node(records_dir=records_dir), **(nodes or {})}
     g = StateGraph(SpecBridgeState)
-    for name in ("intake", "understand", "clarify", "orchestrator", "merge"):
+    for name in ("intake", "understand", "clarify", "orchestrator", "merge", "reviewer", "render", "save_local",
+                 "publish"):
         g.add_node(name, _main_node(name, fns[name], settings))
     g.add_edge(START, "intake")
     g.add_edge("intake", "understand")
     g.add_conditional_edges("understand", route_after_understand, ["clarify", "orchestrator"])
     g.add_node("criterion_worker", _worker_node("criterion_worker", fns["criterion_worker"], settings))
     g.add_node("e2e_worker", _worker_node("e2e_worker", fns["e2e_worker"], settings))
-    g.add_edge("clarify", END)
-    g.add_conditional_edges("orchestrator", route_after_orchestrator, ["criterion_worker", "e2e_worker", END])
+    g.add_edge("clarify", "render")
+    g.add_conditional_edges("orchestrator", route_after_orchestrator, ["criterion_worker", "e2e_worker", "render"])
     g.add_edge("criterion_worker", "merge")   # merge waits for every worker
     g.add_edge("e2e_worker", "merge")
-    g.add_edge("merge", END)                  # the reviewer (node 8) comes here
+    g.add_edge("merge", "reviewer")
+    g.add_conditional_edges("reviewer", route_after_review, ["orchestrator", "render"])
+    g.add_conditional_edges("render", route_after_render, ["save_local", "publish"])
+    g.add_edge("save_local", END)
+    g.add_edge("publish", END)
     return g.compile(checkpointer=checkpointer, interrupt_before=interrupt_before)
 
 
@@ -125,8 +143,6 @@ def new_run_id():
 def _check_request(ticket_ref, mode, run_id, resume):
     if mode not in MODES:
         raise StartError(f"unknown mode {mode!r}; choose one of {', '.join(ENABLED_MODES)}")
-    if mode not in ENABLED_MODES:
-        raise StartError("live mode needs the publish node, which is not built yet; use --mode dry-run")
     if run_id is not None and not RUN_ID.fullmatch(run_id):
         raise StartError("a run id may only use letters, digits, '.', '_' and '-' (at most 64)")
     if resume:
@@ -152,7 +168,7 @@ def _ready_records_dir(records_dir):
 
 def run_ticket(ticket_ref=None, mode="dry-run", run_id=None, resume=False, preflight_check=True, *,
                settings=None, nodes=None, checkpointer=None, records_dir=run_record.RUNS, env=None,
-               brain_check=preflight.check_brain, interrupt_before=None):
+               brain_check=preflight.check_brain, atlassian_check=preflight.check_atlassian, interrupt_before=None):
     """START a run (or continue one with resume=True and its run_id) and return a RunResult.
 
     Refusals before a run exists raise StartError, SettingsError or PreflightError and write nothing.
@@ -171,7 +187,9 @@ def run_ticket(ticket_ref=None, mode="dry-run", run_id=None, resume=False, prefl
     if not resume and exists:
         raise StartError(f"run id {run_id} is already used; leave --run-id out for a new run")
     brain = brain_check(env=env, network=preflight_check)
-    app = build_graph(nodes, settings, checkpointer, interrupt_before)
+    if mode == "live" and not resume:
+        atlassian_check(env=env, network=preflight_check)   # before any AI money is spent
+    app = build_graph(nodes, settings, checkpointer, interrupt_before, records_dir)
 
     if resume:
         snapshot = app.get_state(config)
@@ -202,7 +220,9 @@ def run_ticket(ticket_ref=None, mode="dry-run", run_id=None, resume=False, prefl
         results = state.get("results") or []
         status = state.get("status") or \
             ("incomplete" if any(r.get("status") != "complete" for r in results) else "complete")
-        note = NOT_BUILT_NOTE if results else (state.get("orchestration") or {}).get("stopped", "")
+        stopped = "" if results else (state.get("orchestration") or {}).get("stopped", "")
+        note = "; ".join(filter(None, [stopped, (state.get("saved") or {}).get("error", ""),
+                                       (state.get("published") or {}).get("error", "")]))
     values = app.get_state(config).values
     path = run_record.write(values, settings, status, records_dir, None, brain, note)
     return RunResult(run_id, status, state, path, brain, note)

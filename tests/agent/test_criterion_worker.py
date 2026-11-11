@@ -341,15 +341,19 @@ def test_workers_run_in_parallel_and_one_crash_does_not_stop_the_others(start, r
         return fake_worker()(payload, settings)
     r = start("SPEC-66", nodes={"understand": fake_understand(brain=FakeBrain(answer)),
                                 "orchestrator": fake_orchestrator(brain=FakeBrain(groups)),
-                                "criterion_worker": worker})
+                                "criterion_worker": worker,
+                                "e2e_worker": lambda payload, settings: {**fake_worker()(payload, settings), "cases": []}})
     results = sorted(r.state["results"], key=lambda x: x["work_item_id"])
-    assert [x["work_item_id"] for x in results] == ["E2E", "W1", "W2"]   # the e2e worker runs with 2+ workers
-    assert [x["status"] for x in results] == ["complete", "complete", "error"] and "worker exploded" in results[2]["error"]
-    assert r.status == "incomplete" and r.message == "stopped after merge: the reviewer (node 8) is not built yet"
+    assert [x["work_item_id"] for x in results] == ["E2E", "W1", "W2", "W2-R2"]   # e2e runs with 2+ workers
+    assert [x["status"] for x in results] == ["complete", "complete", "error", "complete"]
+    assert "worker exploded" in results[2]["error"]
+    # W2's criterion was weak (its worker crashed), so the reviewer sent it back once and the retry worked
+    assert r.state["review"]["round"] == 2 and r.status == "complete"
+    assert r.message == ""
     trace = [t for t in r.state["trace"] if t["node"] == "criterion_worker"]
-    assert sorted(t["work_item"] for t in trace) == ["W1", "W2"]
+    assert sorted(t["work_item"] for t in trace) == ["W1", "W2", "W2-R2"]
     rec = json.loads(r.record_path.read_text())
-    assert len(rec["state"]["results"]) == 3
+    assert len(rec["state"]["results"]) == 4
 
 
 def test_no_work_items_means_no_workers(start):

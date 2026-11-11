@@ -4,7 +4,7 @@ Usage:
   .venv/bin/python scripts/run_ticket.py SPEC-12
   .venv/bin/python scripts/run_ticket.py https://rooks101.atlassian.net/browse/SPEC-12 --mode eval
   .venv/bin/python scripts/run_ticket.py --resume --run-id 20261107-101500-a1b2c3
-Options: --mode dry-run (default) | eval  (live waits for the publish node);  --no-preflight skips the
+Options: --mode dry-run (default) | eval | live  (live publishes the page to Confluence and comments on the ticket);  --no-preflight skips the
 online brain check (offline work and tests);  --records-dir puts run records somewhere else.
 Exit codes: 0 done, 1 the run failed, 2 refused before starting, 130 stopped with Ctrl-C.
 """
@@ -134,10 +134,42 @@ def main(argv=None):
                   f"(cites {', '.join(case['evidence_ids'])}; from {case['source']})")
         for ch in plan["changes"]:
             print(f"  {'applied' if ch['applied'] else 'refused'}: {ch['change']}" + (f" - {ch['why']}" if ch["why"] else ""))
+    review = result.state.get("review")
+    if review:
+        print(f"review: round {review['round']}; {review['scores']}"
+              + (f"; retrying {', '.join(review['retry'])}" if review.get("retry") else "")
+              + (f"; final: {review['final']['status']}" + (f" ({review['final']['reason']})" if review["final"]["reason"] else "")
+                 if review.get("final") else ""))
+        for cid, v in review["per_criterion"].items():
+            print(f"  {cid} {v['verdict']}" + (f" - hint: {v['retry_hint']}" if v.get("retry_hint") else ""))
+            for p in v.get("problems", []):
+                print(f"     {p['kind']}{' ' + p['case'] if p['case'] else ''}: {p['detail']}")
+        for case in (result.state.get("plan") or {}).get("cases", []):
+            for f in case.get("flags", []):
+                print(f"  flag {case['id']} {f['kind']}: {f['detail']}")
+    page = result.state.get("page")
+    if page:
+        print(f"page:   {page['title']} ({page['summary']['kind']}, {len(page['storage']):,} characters)")
+        print("comment:\n  " + page["comment"].replace("\n", "\n  "))
+    published = result.state.get("published") or {}
+    if published.get("page_url"):
+        print(f"published: {published['page_url']}  (page {published['page_action']}, version "
+              f"{published['page_version']}; Jira comment {published['comment_action'] or 'not written'})")
+    if published.get("error"):
+        print(f"published: NOT PUBLISHED - {published['error']}")
+        if (published.get("fallback") or {}).get("files"):
+            print(f"           saved locally instead: {published['fallback']['files']['html']}")
+    saved = result.state.get("saved") or {}
+    if saved.get("files"):
+        print(f"saved:  {saved['files']['html']}  (open in a browser; also page.md, page.storage.xml, comment.txt)")
+    for w in saved.get("warnings", []):
+        print(f"  warning: {w}")
+    if saved.get("error"):
+        print(f"saved:  NOT SAVED - {saved['error']}")
     print(f"run:    {result.run_id}")
     print(f"status: {result.status}" + (f" ({result.message})" if result.message else ""))
     print(f"record: {result.record_path}")
-    return 0
+    return 1 if saved.get("error") or published.get("error") else 0   # the page was not saved / published
 
 
 if __name__ == "__main__":

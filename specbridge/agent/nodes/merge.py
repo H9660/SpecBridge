@@ -64,6 +64,27 @@ def latest_results(results):
     return list(newest.values())
 
 
+def combine_rounds(results):
+    """Results with retried criteria resolved: a criterion retried in a later round takes that round's cases only
+    if the retry produced some; otherwise the earlier cases stay (a retry never makes a criterion worse). Only
+    single-criterion cases are replaced; flows through several criteria stay. Returns (results, replaced ids)."""
+    latest = max((r.get("round", 1) for r in results), default=1)
+    if latest == 1:
+        return results, []
+    out = [{**r, "cases": list(r.get("cases", [])), "untestable": list(r.get("untestable", []))} for r in results]
+    replaced = []
+    for newer in [r for r in out if r.get("round", 1) == latest]:
+        for cid in newer.get("criterion_ids", []):
+            if not any(cid in (c.get("criterion_ids") or [c["criterion_id"]]) for c in newer["cases"]):
+                newer["untestable"] = [u for u in newer["untestable"] if u["criterion_id"] != cid]   # keep round 1
+                continue
+            replaced.append(cid)
+            for older in [r for r in out if r.get("round", 1) < latest]:
+                older["cases"] = [c for c in older["cases"] if (c.get("criterion_ids") or [c["criterion_id"]]) != [cid]]
+                older["untestable"] = [u for u in older["untestable"] if u["criterion_id"] != cid]
+    return out, replaced
+
+
 def merge_evidence(results):
     """(evidence [EV-01..], {(worker, local id): EV id}). Exact duplicates and ranges inside a bigger range of
     the same file become one entry."""
@@ -162,7 +183,10 @@ def dedupe(items):
 def build_plan(state):
     """Part A: the plan made by code alone."""
     u = state.get("understanding") or {}
-    results = latest_results(state.get("results") or [])
+    results, replaced = combine_rounds(latest_results(state.get("results") or []))
+    for r in results:   # evidence that no remaining case cites is left out
+        cited = {e for c in r.get("cases", []) for e in c.get("evidence_ids", [])}
+        r["evidence"] = [e for e in r.get("evidence", []) if e["id"] in cited]
     evidence, mapping = merge_evidence(results)
     order = [c["id"] for c in u.get("criteria", [])]
     common, cases = common_preconditions(gather_cases(results, mapping, order))
@@ -175,7 +199,9 @@ def build_plan(state):
         "workers": [{"id": r["work_item_id"], "criteria": r.get("criterion_ids", []), "status": r.get("status"),
                      "cases": len(r.get("cases", [])), "stop": r.get("stop", ""), "error": r.get("error", "")}
                     for r in results],
-        "changes": [], "editor": {"used": "not needed"},
+        "changes": [{"change": f"{cid}: round {max(r.get('round', 1) for r in results)} cases replace the earlier ones",
+                     "applied": True, "why": "retried after review"} for cid in replaced],
+        "editor": {"used": "not needed"},
     }
 
 
@@ -278,12 +304,12 @@ def edit(plan, state, brain):
             "cost_estimated": reply.cost_estimated, "seconds": reply.seconds}
     cases, changes = apply_edits(plan, reply.data, corpus)
     if not plan_ok(plan, cases, plan["evidence"]):
-        return {**plan, "changes": [{**c, "applied": False} for c in changes],
+        return {**plan, "changes": plan["changes"] + [{**c, "applied": False} for c in changes],
                 "editor": {**meta, "used": "code only", "why": "the edited plan failed the whole-plan checks"}}, spent
     renumbered = {c["id"]: f"TC-{n:02d}" for n, c in enumerate(cases, 1)}
     cases = [{**c, "id": renumbered[c["id"]]} for c in cases]
     criteria = [{**row, "cases": [renumbered[i] for i in row["cases"] if i in renumbered]} for row in plan["criteria"]]
-    return {**plan, "cases": cases, "criteria": criteria, "changes": changes,
+    return {**plan, "cases": cases, "criteria": criteria, "changes": plan["changes"] + changes,
             "editor": {**meta, "used": "AI edits checked by code"}}, spent
 
 

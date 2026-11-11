@@ -5,7 +5,7 @@
       "api": "openai-chat",
       "provider": "google",
       "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-      "model": "gemini-3.8-flash",
+      "model": "gemini-3.6-flash",
       "api_key_env": "GEMINI_API_KEY",
       "structured_outputs": true,
       "context_window": 1048576,
@@ -15,7 +15,7 @@
         "input": 0.75,
         "output": 3.75
       },
-      "note": "Gemini called directly through Google's OpenAI-compatible endpoint (key from https://aistudio.google.com/apikey). Google does not report cost, so it is estimated from price_usd_per_mtok (list price, thinking counted as output); calls on the free tier actually cost $0.",
+      "note": "Main model gemini-3.6-flash for now (user's choice, 2026-11-11: gemini-3.8-flash hung or was overloaded several times that day; set it back here). Price kept at 3.8-flash list prices as an upper estimate. Gemini called directly through Google's OpenAI-compatible endpoint (key from https://aistudio.google.com/apikey). Google does not report cost, so it is estimated from price_usd_per_mtok (list price, thinking counted as output); calls on the free tier actually cost $0.",
       "roles": {
         "worker_agent": {
           "model": "gemini-3.5-flash-lite",
@@ -24,6 +24,14 @@
             "output": 2.5
           },
           "note": "The worker's search turns (choosing the next tool call) use this cheaper model; write_cases and the other nodes use the main model (ADR D23). Price from third-party listings, 2026-11-11."
+        },
+        "reviewer": {
+          "model": "gemini-3.6-flash",
+          "price_usd_per_mtok": {
+            "input": 0.75,
+            "output": 3.75
+          },
+          "note": "The independent reviewer (node 8), in a fresh context. gemini-3.6-flash for now (user's choice, 2026-11-11: 3.8-flash was overloaded); price kept at 3.8-flash list prices as an upper estimate. Switch here to try another model (ADR D25)."
         }
       }
     },

@@ -1,0 +1,4 @@
+[SpecBridge] SPEC-12: UAT test cases drafted - some need attention
+15 test cases for 6 acceptance criteria (1 ok; 5 need attention: AC1, AC2, AC3, AC5, AC6).
+4 open questions.
+Page: {page_url}

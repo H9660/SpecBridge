@@ -250,8 +250,8 @@ def test_merge_runs_once_after_all_workers(start):
     r = start("SPEC-6", nodes={"understand": fake_understand(brain=FakeBrain(answer)),
                                "orchestrator": fake_orchestrator(brain=FakeBrain(groups))})
     nodes = [t["node"] for t in r.state["trace"]]
-    assert nodes.count("merge") == 1 and nodes[-1] == "merge" and nodes.count("criterion_worker") == 2
+    assert nodes.count("merge") == 1 and nodes[-4:] == ["merge", "reviewer", "render", "save_local"] and nodes.count("criterion_worker") == 2
     plan = r.state["plan"]
     assert any(c["source"].startswith("E2E") for c in plan["cases"]) and len(plan["workers"]) == 3
     rec = json.loads(r.record_path.read_text())
-    assert rec["state"]["plan"]["cases"] and rec["note"] == "stopped after merge: the reviewer (node 8) is not built yet"
+    assert rec["state"]["plan"]["cases"] and rec["note"] == ""

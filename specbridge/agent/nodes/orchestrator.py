@@ -11,6 +11,10 @@
    Skipped when there is nothing to split (one criterion, or a regression check).
 5. Shared brief, one private slice per worker, budget split (80% to workers, e2e half a share, 20% reserve).
 Out: work_items, brief, e2e, skipped, orchestration (how the plan was made), round = 1.
+
+Retry round (the reviewer sent weak criteria back, ADR D25): `retry_plan` - only the weak criteria, each kept with
+the criteria of its round-1 worker that are also weak, the reviewer's findings and hint in the slice, the code cited
+in round 1 as starting pointers, the remaining budget (10% kept for the second review), no AI call, no e2e worker.
 """
 import re
 
@@ -255,6 +259,8 @@ def make_node(brain=None, env=None, search=None):
         if not u or scope not in ("full", "regression"):
             raise OrchestratorError(f"the orchestrator needs a testable ticket, not test scope {scope!r} "
                                     "(the graph routed it wrongly)")
+        if (state.get("review") or {}).get("retry"):
+            return retry_plan(u, ticket, state, settings)
         e = load_env() if env is None else env
         finder = search or real_searcher(e)
         try:
@@ -263,6 +269,52 @@ def make_node(brain=None, env=None, search=None):
             if isinstance(finder, Searcher):
                 finder.index.close()
     return node
+
+
+def retry_plan(u, ticket, state, settings):
+    """The work items of a retry round: only the weak criteria, with the reviewer's findings."""
+    review = state["review"]
+    weak = [c for c in review["retry"] if c in {x["id"] for x in u.get("criteria", [])}]
+    rnd = state.get("round", 1) + 1
+    by_id = {c["id"]: c for c in u.get("criteria", [])}
+    plan = state.get("plan") or {}
+    evidence = {e["id"]: e for e in plan.get("evidence", [])}
+    groups, placed = [], set()
+    for item in state.get("work_items", []):
+        ids = [c for c in item["criterion_ids"] if c in weak and c not in placed]
+        if ids:
+            groups.append((item, ids))
+            placed |= set(ids)
+    groups += [(None, [c]) for c in weak if c not in placed]
+    remaining = max(0.0, settings.cost_cap_usd - (state.get("spent") or {}).get("cost", 0))
+    per_worker = remaining * 0.9 / len(groups) if groups else 0.0
+    meta = {**(state.get("orchestration") or {}),
+            "retry": {"round": rnd, "criteria": weak, "remaining": round(remaining, 6),
+                      "per_worker": round(per_worker, 6)}}
+    if not groups or per_worker <= 0:
+        return {"round": rnd, "work_items": [], "e2e": None, "status": "incomplete",
+                "orchestration": {**meta, "stopped": "no budget left for the retry round"}}
+    items = []
+    for n, (item, ids) in enumerate(groups, 1):
+        criteria = [by_id[i] for i in ids]
+        slice_ = make_slice(criteria, ticket, (item or {}).get("slice", {}).get("focus", ""))
+        slice_["review_notes"] = [{"criterion_id": cid, "hint": _safe(review["per_criterion"][cid].get("retry_hint", "")),
+                                   "problems": [_safe(p["detail"]) for p in review["per_criterion"][cid].get("problems", [])]}
+                                  for cid in ids if cid in review["per_criterion"]]
+        cited = [evidence[e] for c in plan.get("cases", []) if set(c["criterion_ids"]) & set(ids)
+                 for e in c["evidence_ids"] if e in evidence]
+        seeds, seen = [], set()
+        for e in [*(item or {}).get("seed_evidence", []),
+                  *({"repo": x["repo"], "path": x["path"], "piece": "read in round 1", "lines": x["lines"],
+                     "appears_in": []} for x in cited)]:
+            key = (e["repo"], e["path"], tuple(e.get("lines") or []))
+            if key not in seen:
+                seen.add(key)
+                seeds.append({**e, "shared": False})
+        items.append({"id": f"{(item or {}).get('id', f'W{n}')}-R{rnd}", "criterion_ids": ids, "slice": slice_,
+                      "seed_evidence": seeds[:TOP_PIECES * 2],
+                      "budget": {"cost": round(per_worker, 6), "tool_calls": settings.max_tool_calls_per_round}})
+    return {"round": rnd, "work_items": items, "e2e": None, "orchestration": meta}
 
 
 def _plan(u, ticket, scope, search, brain, env, settings, state):

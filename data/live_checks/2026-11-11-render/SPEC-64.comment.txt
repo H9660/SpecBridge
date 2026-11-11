@@ -1,0 +1,10 @@
+[SpecBridge] SPEC-64: needs clarification - no UAT test cases yet
+
+No UAT test cases yet: the ticket relies on a screen that is not in the app (Dental Chart tab).
+Why: the ticket talks about a screen that does not exist in the code: Dental Chart tab
+
+Questions for the PM:
+1. "Dental Chart tab" does not exist in the code: is it a new screen to be built, and where should it appear?
+
+To get test cases: Say whether the screen is new (and where it goes), or name the existing screen that is meant.
+Full details: {page_url}

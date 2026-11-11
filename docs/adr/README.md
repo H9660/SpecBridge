@@ -13,6 +13,9 @@ One file per significant design decision: what was decided, why, what it costs, 
 | [D22](0022-orchestrator-code-proposes-ai-refines.md) | The orchestrator splits the work in three steps: code proposes, one AI call refines, code checks | Accepted | 2026-11-10 |
 | [D23](0023-criterion-worker-design.md) | criterion_worker: a cheap model searches, the main model writes, code checks every citation | Accepted | 2026-11-11 |
 | [D24](0024-merge-code-builds-ai-only-removes-renames.md) | merge: code builds the plan; the AI may only suggest removing duplicates and renaming, and code checks every suggestion | Accepted | 2026-11-11 |
+| [D25](0025-reviewer-flags-not-drops-one-retry.md) | reviewer: code checks flag (never drop), one independent AI review call per criterion in parallel, one retry round for weak criteria | Accepted | 2026-11-11 |
+| [D26](0026-render-one-document-three-formats.md) | render: one document written as Confluence storage, HTML and Markdown; a page for every finished run | Accepted | 2026-11-11 |
+| [D27](0027-publish-labels-version-guard-fallback.md) | publish: page found by labels, never overwrite a person's edit (draft as a page comment), one Jira comment, save locally on failure | Accepted | 2026-11-11 |
 
 ## Template
 

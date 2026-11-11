@@ -1,0 +1,4 @@
+[SpecBridge] SPEC-66: UAT test cases ready for PM review
+6 test cases for 3 acceptance criteria (3 ok).
+1 open questions.
+Page: {page_url}
