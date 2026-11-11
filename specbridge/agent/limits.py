@@ -16,7 +16,7 @@ class Settings:
     cost_cap_usd: float = 0.25
     max_rounds: int = 2               # the first run plus 1 retry
     time_cap_seconds: float = 600
-    max_tool_calls_per_round: int = 12
+    max_tool_calls_per_round: int = 8
     reserve_share: float = 0.2
     max_workers: int = 5
     max_concurrency: int = 5

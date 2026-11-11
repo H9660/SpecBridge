@@ -186,7 +186,7 @@ def test_budget_split_adds_up():
     b = split_budget(Settings(), spent_cost=0.01, workers=2, e2e=True)
     assert b["remaining"] == pytest.approx(0.24)
     assert 2 * b["per_worker"] + b["e2e"] + b["reserve"] == pytest.approx(b["remaining"], abs=1e-5)
-    assert b["tool_calls"] == 12
+    assert b["tool_calls"] == 8
 
 
 def test_budget_counts_what_understand_and_the_ai_spent():
@@ -251,10 +251,10 @@ def test_same_input_same_plan():
 
 def test_plan_in_the_graph_and_the_record(start):
     r = start("SPEC-66")
-    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator"]
+    assert [t["node"] for t in r.state["trace"]] == ["START", "intake", "understand", "orchestrator", "criterion_worker", "merge"]
     rec = json.loads(r.record_path.read_text())
     assert rec["state"]["work_items"] and rec["state"]["brief"]["ticket"] == "SPEC-66"
-    assert rec["note"] == "stopped after the orchestrator: the workers (node 5) are not built yet"
+    assert rec["note"] == "stopped after merge: the reviewer (node 8) is not built yet"
 
 
 # --- on the real code library (no AI) -----------------------------------------------------------------

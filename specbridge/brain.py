@@ -106,6 +106,18 @@ class OpenAIChatBrain:
             "Reply with JSON only, matching this JSON Schema:\n" + json.dumps(schema)
         return self._run(_messages(prompt, system), max_tokens, temperature, schema=schema)
 
+    def chat(self, messages, schema=None, max_tokens=4000, temperature=0.0):
+        """A multi-turn conversation [{role, content}] (system first, if any). With a schema, the answer is JSON
+        checked against it, asked once more if invalid (as ask_json)."""
+        messages = [dict(m) for m in messages]
+        if schema is not None:
+            note = "Reply with JSON only, matching this JSON Schema:\n" + json.dumps(schema)
+            if messages and messages[0]["role"] == "system":
+                messages[0]["content"] = messages[0]["content"] + "\n\n" + note
+            else:
+                messages.insert(0, {"role": "system", "content": note})
+        return self._run(messages, max_tokens, temperature, schema=schema)
+
     def _run(self, messages, max_tokens, temperature, schema):
         start, usage_total, attempts = time.time(), [], 0
         fmt = None
@@ -159,8 +171,10 @@ class OpenAIChatBrain:
 ADAPTERS = {"openai-chat": OpenAIChatBrain}
 
 
-def load_brain(name=None, env=None, config_path=CONFIG):
-    """Build the brain chosen by `name`, else BRAIN in the environment/.env, else the config default."""
+def load_brain(name=None, env=None, config_path=CONFIG, role=None):
+    """Build the brain chosen by `name`, else BRAIN in the environment/.env, else the config default.
+    `role` (e.g. "worker_agent") picks that role's own model and price from the profile's "roles", if set;
+    BRAIN_MODEL overrides only the profile's main model."""
     env = load_env() if env is None else env
     config = json.loads(config_path.read_text(encoding="utf-8"))
     name = name or env.get("BRAIN") or config["default"]
@@ -169,6 +183,8 @@ def load_brain(name=None, env=None, config_path=CONFIG):
     profile = dict(config["brains"][name])
     if env.get("BRAIN_MODEL"):
         profile["model"] = env["BRAIN_MODEL"]
+    if role and role in profile.get("roles", {}):
+        profile.update(profile["roles"][role])
     adapter = ADAPTERS.get(profile.get("api"))
     if adapter is None:
         raise BrainError(f"brain '{name}' uses unknown api '{profile.get('api')}'; known: {sorted(ADAPTERS)}")

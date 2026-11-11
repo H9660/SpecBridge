@@ -15,7 +15,17 @@
         "input": 0.75,
         "output": 3.75
       },
-      "note": "Gemini called directly through Google's OpenAI-compatible endpoint (key from https://aistudio.google.com/apikey). Google does not report cost, so it is estimated from price_usd_per_mtok (list price, thinking counted as output); calls on the free tier actually cost $0."
+      "note": "Gemini called directly through Google's OpenAI-compatible endpoint (key from https://aistudio.google.com/apikey). Google does not report cost, so it is estimated from price_usd_per_mtok (list price, thinking counted as output); calls on the free tier actually cost $0.",
+      "roles": {
+        "worker_agent": {
+          "model": "gemini-3.5-flash-lite",
+          "price_usd_per_mtok": {
+            "input": 0.3,
+            "output": 2.5
+          },
+          "note": "The worker's search turns (choosing the next tool call) use this cheaper model; write_cases and the other nodes use the main model (ADR D23). Price from third-party listings, 2026-11-11."
+        }
+      }
     },
     "slm": {
       "api": "openai-chat",

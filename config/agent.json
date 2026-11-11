@@ -2,9 +2,12 @@
   "cost_cap_usd": 0.25,
   "max_rounds": 2,
   "time_cap_seconds": 600,
-  "max_tool_calls_per_round": 12,
+  "max_tool_calls_per_round": 8,
   "reserve_share": 0.2,
   "max_workers": 5,
-  "max_concurrency": {"llm": 5, "slm": 1},
+  "max_concurrency": {
+    "llm": 5,
+    "slm": 1
+  },
   "note": "Agent limits (ARCHITECTURE.md D9, D18, D19). max_rounds 2 = the first run plus 1 retry. max_concurrency is picked by BRAIN."
 }

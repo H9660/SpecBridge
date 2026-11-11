@@ -1,7 +1,7 @@
 """The main LangGraph graph (ARCHITECTURE.md, docs/architecture.drawio), built node by node.
 
-Now: START -> intake -> understand -> (test scope none: clarify -> END | full / regression: orchestrator -> END,
-until the workers exist). `run_ticket` is START: it checks the request and the brain, creates the
+Now: START -> intake -> understand -> (test scope none: clarify -> END | full / regression: orchestrator ->
+Send -> criterion_worker x N (+ e2e_worker when 2+ workers) -> merge -> END, until the reviewer exists). `run_ticket` is START: it checks the request and the brain, creates the
 run, runs the graph with a checkpointer, and writes the run record however the run ends.
 
 Nodes are plain functions `node(state, settings)`; `build_graph` takes replacements, which is how
@@ -16,15 +16,18 @@ from dataclasses import dataclass
 
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Send
 
 from specbridge.agent import preflight, run_record
 from specbridge.agent.limits import load_settings
-from specbridge.agent.nodes import clarify, intake, orchestrator, understand
+from specbridge.agent.nodes import clarify, intake, merge, orchestrator, understand
 from specbridge.agent.state import ENABLED_MODES, MODES, SpecBridgeState, add_spent
+from specbridge.agent.worker import criterion_worker, e2e_worker
 
 DEFAULT_NODES = {"intake": intake.node, "understand": understand.node, "clarify": clarify.node,
-                 "orchestrator": orchestrator.node}
-NOT_BUILT_NOTE = "stopped after the orchestrator: the workers (node 5) are not built yet"
+                 "orchestrator": orchestrator.node, "criterion_worker": criterion_worker.run,
+                 "e2e_worker": e2e_worker.run, "merge": merge.node}
+NOT_BUILT_NOTE = "stopped after merge: the reviewer (node 8) is not built yet"
 MAX_REF_CHARS = 2000
 RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
@@ -54,17 +57,55 @@ def _main_node(name, fn, settings):
     return wrapped
 
 
+def _worker_node(name, fn, settings):
+    """Runs one worker on its Send payload; only its WorkerResult and spending reach the main state.
+    A crash becomes a result with status "error", so the other workers' cases are kept."""
+    def wrapped(payload):
+        t0 = time.time()
+        item = payload["work_item"]
+        try:
+            result = dict(fn(payload, settings))
+        except Exception as err:  # noqa: BLE001 - one failed worker must not stop the others
+            result = {"work_item_id": item["id"], "criterion_ids": item["criterion_ids"],
+                      "round": payload.get("round", 1), "status": "error", "cases": [], "evidence": [],
+                      "questions": [], "notes": [], "error": f"{type(err).__name__}: {str(err)[:300]}"}
+        spent = result.pop("spent", {}) or {}
+        dt = time.time() - t0
+        return {"results": [result], "spent": add_spent({k: v for k, v in spent.items() if k in ("tokens", "cost")},
+                                                        {"seconds": dt}),
+                "trace": [{"node": name, "round": payload.get("round", 1), "seconds": round(dt, 4),
+                           "work_item": item["id"], "status": result.get("status")}]}
+    return wrapped
+
+
+def route_after_orchestrator(state):
+    """One Send per work item, plus one for the e2e worker if planned (all in parallel); nothing to send -> END."""
+    items = state.get("work_items") or []
+    if not items or state.get("status") == "incomplete":
+        return END
+    common = {"brief": state["brief"], "round": state.get("round", 1), "run_id": state.get("run_id")}
+    sends = [Send("criterion_worker", {**common, "work_item": item}) for item in items]
+    if state.get("e2e"):
+        sends.append(Send("e2e_worker", {**common, "work_item": e2e_worker.as_work_item(state["e2e"])}))
+    return sends
+
+
 def build_graph(nodes=None, settings=None, checkpointer=None, interrupt_before=None):
     settings = settings or load_settings()
     fns = {**DEFAULT_NODES, **(nodes or {})}
     g = StateGraph(SpecBridgeState)
-    for name in ("intake", "understand", "clarify", "orchestrator"):
+    for name in ("intake", "understand", "clarify", "orchestrator", "merge"):
         g.add_node(name, _main_node(name, fns[name], settings))
     g.add_edge(START, "intake")
     g.add_edge("intake", "understand")
     g.add_conditional_edges("understand", route_after_understand, ["clarify", "orchestrator"])
+    g.add_node("criterion_worker", _worker_node("criterion_worker", fns["criterion_worker"], settings))
+    g.add_node("e2e_worker", _worker_node("e2e_worker", fns["e2e_worker"], settings))
     g.add_edge("clarify", END)
-    g.add_edge("orchestrator", END)   # node 5 replaces this with Send -> criterion_worker x N
+    g.add_conditional_edges("orchestrator", route_after_orchestrator, ["criterion_worker", "e2e_worker", END])
+    g.add_edge("criterion_worker", "merge")   # merge waits for every worker
+    g.add_edge("e2e_worker", "merge")
+    g.add_edge("merge", END)                  # the reviewer (node 8) comes here
     return g.compile(checkpointer=checkpointer, interrupt_before=interrupt_before)
 
 
@@ -158,9 +199,10 @@ def run_ticket(ticket_ref=None, mode="dry-run", run_id=None, resume=False, prefl
     if app.get_state(config).next:
         status, note = "paused", ""
     else:
-        status = state.get("status") or "complete"
-        note = NOT_BUILT_NOTE if status == "complete" and state.get("work_items") else \
-            (state.get("orchestration") or {}).get("stopped", "")
+        results = state.get("results") or []
+        status = state.get("status") or \
+            ("incomplete" if any(r.get("status") != "complete" for r in results) else "complete")
+        note = NOT_BUILT_NOTE if results else (state.get("orchestration") or {}).get("stopped", "")
     values = app.get_state(config).values
     path = run_record.write(values, settings, status, records_dir, None, brain, note)
     return RunResult(run_id, status, state, path, brain, note)

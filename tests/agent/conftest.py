@@ -8,7 +8,7 @@ PROJECT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT))
 
 from specbridge.agent.limits import Settings  # noqa: E402
-from specbridge.agent.nodes import intake, orchestrator, understand  # noqa: E402
+from specbridge.agent.nodes import intake, merge, orchestrator, understand  # noqa: E402
 from specbridge.atlassian import JiraError  # noqa: E402
 from specbridge.brain import BrainError, Reply  # noqa: E402
 
@@ -103,6 +103,20 @@ def fake_orchestrator(brain=None, search=None):
     return orchestrator.make_node(brain=brain or FakeBrain(), env={}, search=search or fake_search())
 
 
+def fake_worker(status="complete"):
+    """Stands in for criterion_worker in graph tests: one case per criterion, citing E1."""
+    def run(payload, settings):
+        item = payload["work_item"]
+        return {"work_item_id": item["id"], "criterion_ids": item["criterion_ids"], "round": payload.get("round", 1),
+                "status": status, "cases": [{"id": f"{item['id']}-C{n}", "criterion_id": cid, "title": f"check {cid}",
+                                             "type": "happy", "preconditions": [], "steps": ["open it"],
+                                             "expected": "it works", "evidence_ids": ["E1"]}
+                                            for n, cid in enumerate(item["criterion_ids"], 1)],
+                "evidence": [{"id": "E1", "repo": "patient-chart", "path": "src/x.tsx", "lines": [1, 5]}],
+                "questions": [], "notes": [], "spent": {"tokens": 500, "cost": 0.002}}
+    return run
+
+
 def fake_intake(jira=None):
     return intake.make_node(env=JIRA_ENV, client=jira or FakeJira(), sleep=lambda s: None)
 
@@ -150,6 +164,8 @@ def start(records, fake_brain):
         kwargs.setdefault("settings", Settings())
         kwargs.setdefault("env", {"BRAIN": "llm", "GEMINI_API_KEY": FAKE_KEY})
         kwargs["nodes"] = {"intake": fake_intake(), "understand": fake_understand(), "orchestrator": fake_orchestrator(),
+                           "criterion_worker": fake_worker(), "e2e_worker": fake_worker(),
+                           "merge": merge.make_node(brain=FakeBrain({"remove": [], "rename": []}), env={}),
                            **(kwargs.get("nodes") or {})}
         return run_ticket(ticket_ref, **kwargs)
     return run

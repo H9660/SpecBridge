@@ -26,6 +26,7 @@ AREA_FILES = 3          # criteria whose top-3 files share at least 2 are in the
 MAX_TOKENS = 3000
 SLICE_CHARS = 24_000    # about 6k tokens of ticket text per worker (D8)
 WORKER_SHARE, RESERVE_SHARE = 0.8, 0.2
+E2E_TOOL_CALLS = 4      # the e2e worker only confirms screens and navigation
 STR = {"type": "string"}
 SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["groups", "not_browser_testable"],
@@ -324,7 +325,8 @@ def _plan(u, ticket, scope, search, brain, env, settings, state):
     out["e2e"] = {"criteria": [{"id": c["id"], "text": _safe(c["text"])} for c in usable
                                if c["id"] not in {s["criterion_id"] for s in skipped}],
                   "screens": [s["name"] for s in out["brief"]["screens"]],
-                  "budget": {"cost": budget["e2e"], "tool_calls": budget["tool_calls"]}} if e2e_on else None
+                  "budget": {"cost": budget["e2e"], "tool_calls": min(E2E_TOOL_CALLS, budget["tool_calls"])}} \
+        if e2e_on else None
     return out
 
 

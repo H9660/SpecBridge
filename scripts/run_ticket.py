@@ -104,6 +104,36 @@ def main(argv=None):
         b = o["budget"]
         print(f"budget: ${b['remaining']:.4f} left of ${b['cap']}; ${b['per_worker']:.4f} per worker, "
               f"reserve ${b['reserve']:.4f}, {b['tool_calls']} tool calls each")
+    for res in result.state.get("results") or []:
+        m = res.get("meta", {})
+        print(f"worker {res['work_item_id']} ({', '.join(res['criterion_ids'])}): {res['status']}"
+              + (f" - {res['error']}" if res.get("error") else "")
+              + (f"; {m.get('tool_calls')} tool calls, {res.get('evidence_read', 0)} pieces of code read, stop: {res.get('stop')}"
+                 if m else ""))
+        for case in res.get("cases", []):
+            crit = "+".join(case.get("criterion_ids") or [case["criterion_id"]])
+            print(f"  {case['id']} [{crit}, {case['type']}] {case['title']}  (cites {', '.join(case['evidence_ids'])})")
+        for u in res.get("untestable", []):
+            print(f"  untestable {u['criterion_id']}: {u['reason']}")
+        if res["work_item_id"] == "E2E" and not res.get("cases") and res.get("missing"):
+            print(f"  no flow: {res['missing']}")
+        if res.get("uncovered"):
+            print(f"  not covered: {', '.join(res['uncovered'])}")
+        for d in res.get("dropped", []):
+            print(f"  dropped: {d}")
+    plan = result.state.get("plan")
+    if plan:
+        print(f"plan:   {len(plan['cases'])} test case(s), {len(plan['evidence'])} piece(s) of evidence; "
+              f"editor: {plan['editor'].get('used')}" + (f" ({plan['editor']['why']})" if plan["editor"].get("why") else ""))
+        for row in plan["criteria"]:
+            print(f"  {row['id']} {row['status']}: {', '.join(row['cases']) or row['detail']}")
+        for p in plan["common_preconditions"]:
+            print(f"  common precondition: {p}")
+        for case in plan["cases"]:
+            print(f"  {case['id']} [{'+'.join(case['criterion_ids'])}, {case['type']}] {case['title']}  "
+                  f"(cites {', '.join(case['evidence_ids'])}; from {case['source']})")
+        for ch in plan["changes"]:
+            print(f"  {'applied' if ch['applied'] else 'refused'}: {ch['change']}" + (f" - {ch['why']}" if ch["why"] else ""))
     print(f"run:    {result.run_id}")
     print(f"status: {result.status}" + (f" ({result.message})" if result.message else ""))
     print(f"record: {result.record_path}")

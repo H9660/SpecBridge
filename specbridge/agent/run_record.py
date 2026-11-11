@@ -14,7 +14,7 @@ RUNS = PROJECT / "data" / "runs"
 SNAPSHOTS = PROJECT / "data" / "snapshots.json"
 TICKET_KEY = re.compile(r"[A-Z][A-Z0-9]+-\d+")
 KEPT = ("ticket", "understanding", "clarification", "brief", "work_items", "e2e", "skipped",
-        "orchestration")   # grows as nodes are added
+        "orchestration", "results", "plan")   # grows as nodes are added
 
 
 def frozen_commits():
