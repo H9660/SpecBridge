@@ -19,3 +19,6 @@ data/runs/
 
 # The Jira trigger service's queue, spending and log (scripts/serve.py)
 data/service/
+
+# Downloaded installers (e.g. cloudflared.deb from docs/DEPLOY_JIRA.md)
+*.deb

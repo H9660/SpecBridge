@@ -1,10 +1,12 @@
-"""Add the hand-written trick tickets (data/golden/adversarial_v0.json) to the team's Jira project.
+"""Add a hand-written ticket set (default data/golden/adversarial_v0.json) to the team's Jira project.
 
-Labels: `adversarial-v0` plus `trick-<type>`. Safe to re-run: a ticket whose summary already exists with the
-label is not created again. Writes data/golden/adversarial_import_map.json (ADV-n -> SPEC-n).
+Labels: the set's label (e.g. `adversarial-v0`, `edge-v1`) plus `trick-<type>`. Safe to re-run: a ticket whose
+summary already exists with the label is not created again. Writes the id -> SPEC key map next to the set
+(adversarial_import_map.json for the trick tickets, <set>_import_map.json otherwise).
 
 Usage:
   py -3.12 scripts/import_adversarial.py [--dry-run]
+  py -3.12 scripts/import_adversarial.py --file test_tickets_v1.json [--dry-run]     # the edge-case tickets
 """
 import argparse
 import json
@@ -36,16 +38,20 @@ def to_adf(text):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--file", default="adversarial_v0.json", help="a ticket set in data/golden/")
     args = parser.parse_args()
 
-    data = json.loads((GOLDEN / "adversarial_v0.json").read_text(encoding="utf-8"))
+    source = GOLDEN / pathlib.Path(args.file).name
+    data = json.loads(source.read_text(encoding="utf-8"))
     label = data["label"]
     payloads = [{"id": t["id"], "summary": t["summary"], "type": t["issue_type"],
-                 "labels": [label, f"trick-{t['trick']}"], "description": to_adf(t["description"])}
+                 "labels": [label, f"trick-{t['trick']}"],
+                 "description": to_adf(t["description"]) if t["description"].strip() else None}
                 for t in data["tickets"]]
     if args.dry_run:
         for p in payloads:
-            print(p["id"], p["type"], p["labels"], p["summary"])
+            size = len(json.dumps(p["description"])) if p["description"] else 0
+            print(p["id"], p["type"], p["labels"], p["summary"], f"(description {size:,} characters as Jira JSON)")
         return
 
     env = load_env()
@@ -54,7 +60,8 @@ def main():
     site = Atlassian(env)
     types = site.issue_types()
     existing = {i["fields"]["summary"]: i["key"] for i in site.search(f'project = {site.project} AND labels = "{label}"')}
-    map_path = GOLDEN / "adversarial_import_map.json"
+    map_path = GOLDEN / ("adversarial_import_map.json" if source.name == "adversarial_v0.json"
+                         else f"{source.stem}_import_map.json")
     mapping = json.loads(map_path.read_text(encoding="utf-8")) if map_path.exists() else {}
     created = 0
     for p in payloads:
@@ -62,8 +69,11 @@ def main():
             mapping[p["id"]] = existing[p["summary"]]
             continue
         type_name = p["type"] if p["type"] in types else "Task"
-        result = site.create_issue({"project": {"key": site.project}, "issuetype": {"id": types[type_name]},
-                                    "summary": p["summary"], "description": p["description"], "labels": p["labels"]})
+        fields = {"project": {"key": site.project}, "issuetype": {"id": types[type_name]},
+                  "summary": p["summary"], "labels": p["labels"]}
+        if p["description"]:
+            fields["description"] = p["description"]
+        result = site.create_issue(fields)
         mapping[p["id"]] = result["key"]
         map_path.write_text(json.dumps(mapping, indent=1), encoding="utf-8")
         created += 1
