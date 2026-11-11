@@ -21,6 +21,10 @@ class Settings:
     reserve_share: float = 0.2
     max_workers: int = 5
     max_concurrency: int = 5
+    # the Jira trigger service (scripts/serve.py, ADR D28)
+    daily_budget_usd: float = 2.0     # all runs started from Jira in one day (UTC), counting queued runs at their cap
+    queue_max: int = 20
+    ticket_cooldown_seconds: float = 600   # one ticket at most once per 10 minutes
 
     @property
     def recursion_limit(self):
@@ -36,6 +40,9 @@ RULES = {   # name: (types, smallest allowed, largest allowed or None, smallest 
     "reserve_share": ((int, float), 0, 0.9, False),
     "max_workers": ((int,), 1, None, False),
     "max_concurrency": ((int,), 1, None, False),
+    "daily_budget_usd": ((int, float), 0, None, True),
+    "queue_max": ((int,), 1, None, False),
+    "ticket_cooldown_seconds": ((int, float), 0, None, False),
 }
 
 

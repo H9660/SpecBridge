@@ -9,5 +9,8 @@
     "llm": 5,
     "slm": 1
   },
-  "note": "Agent limits (ARCHITECTURE.md D9, D18, D19). max_rounds 2 = the first run plus 1 retry. max_concurrency is picked by BRAIN."
+  "note": "Agent limits (ARCHITECTURE.md D9, D18, D19). max_rounds 2 = the first run plus 1 retry. max_concurrency is picked by BRAIN. daily_budget_usd, queue_max and ticket_cooldown_seconds are for the Jira trigger service (scripts/serve.py, ADR D28).",
+  "daily_budget_usd": 2.0,
+  "queue_max": 20,
+  "ticket_cooldown_seconds": 600
 }

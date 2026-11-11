@@ -16,6 +16,7 @@ One file per significant design decision: what was decided, why, what it costs, 
 | [D25](0025-reviewer-flags-not-drops-one-retry.md) | reviewer: code checks flag (never drop), one independent AI review call per criterion in parallel, one retry round for weak criteria | Accepted | 2026-11-11 |
 | [D26](0026-render-one-document-three-formats.md) | render: one document written as Confluence storage, HTML and Markdown; a page for every finished run | Accepted | 2026-11-11 |
 | [D27](0027-publish-labels-version-guard-fallback.md) | publish: page found by labels, never overwrite a person's edit (draft as a page comment), one Jira comment, save locally on failure | Accepted | 2026-11-11 |
+| [D28](0028-jira-button-webhook-service.md) | A "Run SpecBridge" button in Jira: an Automation rule calls a small local service (secret, queue, daily limit) through a tunnel | Accepted | 2026-11-12 |
 
 ## Template
 

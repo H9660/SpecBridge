@@ -20,7 +20,7 @@ Plan section = section of [autonomous_software_engineering_plan.md](../autonomou
 | 5 | Live GitHub code reading (second approach, to compare) | E4 / E5 | Moved into Step 10 (2026-10-28) |
 | 6 | Ticket reader: 6a intake, 6b understand, 6c clarify (pull out requirements; flag vague or unsafe tickets) | E8-S1 | In progress - agent built node by node in `specbridge/agent/` (see "Agent nodes" below): nodes 0-11 built (START ... reviewer with its retry loop, render, save_local, publish); the whole graph has run live, including publish and a retry round |
 | 7 | Agent (LangGraph): 7a skeleton + state + checkpointer, 7b code source, 7c orchestrator, 7d criterion worker, 7e e2e worker, 7f merge, 7g reviewer, 7h wire up and limits | E6, E8 | Planned |
-| 8 | Output: 8a render + save_local, 8b publish to Confluence and comment on Jira, 8c command line + simple local page, 8d bot account | E9, E11, E12 | Planned |
+| 8 | Output: 8a render + save_local, 8b publish to Confluence and comment on Jira, 8c command line + simple local page, 8d bot account, 8e "Run SpecBridge" button in Jira | E9, E11, E12 | In progress - 8a, 8b done (nodes 9-11); 8e built (live check from Jira pending); 8c, 8d open |
 | 9 | Golden answers and scoring: rubric, LLM judge, ship gate | E10 | Planned |
 | 10 | Improve over 3+ rounds; compare LLM against SLM, several workers against one, and code library against live GitHub (former Step 5) | E3, E4, E5, E10 | Planned |
 | 11 | Real users (5+, not classmates), one-page PRD, demo, presentation | - | Planned |
@@ -262,6 +262,12 @@ The last part of the graph: turn the plan into a Confluence page, publish it, an
 #### 8d - Least-privilege bot account
 - **Build:** replace the personal Atlassian token with a bot account that can read the `SPEC` project and write only to space `UAT` and ticket comments (open since Step 2). Update `.env.example` and README.
 - **Smoke test:** the bot can publish a page and a comment; the same token cannot edit a ticket or write to another space.
+
+#### 8e - "Run SpecBridge" button in Jira (built 2026-11-12, ADR D28)
+- **Did:** `specbridge/service.py` and `scripts/serve.py` (standard library only), the guide `docs/DEPLOY_JIRA.md`, `SPECBRIDGE_WEBHOOK_SECRET` in `.env.example`, and `daily_budget_usd` / `queue_max` / `ticket_cooldown_seconds` in `config/agent.json`. A Jira Automation rule (manual trigger) sends `POST /run {"key": "{{issue.key}}"}` with a secret header through a Cloudflare quick tunnel to the service on `127.0.0.1:8765`. The service checks the request (secret in constant time, project key, body size and type), refuses double clicks, a 10-minute repeat, a full queue and the daily limit, answers 202 at once, and runs the tickets one at a time in live mode. The ticket's one `[SpecBridge]` comment says "Generating UAT test cases for PM and engineering review" at once, publish replaces it with the result, and it says so if the run fails or the limit is reached. The queue and the day's spending survive a restart (`data/service/`, git-ignored). `--dry-run` writes nothing to Jira.
+- **Choices:** the user's: option B (button + webhook), the recommended settings, and better wording for the "working on it" comment.
+- **Checked live on this machine** (`data/live_checks/2026-11-12-jira-button.md`): a wrong secret -> 401; the request -> 202 in 2.2 s and the "Generating..." comment on SPEC-66; a double click -> one run; the run -> page version 3 and the same comment with the result ($0.072); a repeat -> 429 for 10 minutes. **Still to do with the user:** the secret in `.env`, `cloudflared`, the Jira rule, and pressing the button in Jira.
+- **Tests:** `.venv/bin/python -m pytest tests -m "not live"` -> 537 pass (37 for the service: every refusal, double click, cooldown, queue, daily limit and next day, failures and their comments, redaction, dry-run, restart, startup refusals, no secret in the log).
 
 ### Step 9 - Golden answers and scoring
 Started early as course activity 3: [golden_set_eval_rubric_v0.md](golden_set_eval_rubric_v0.md) has the first 10 labelled examples, rubric v0 and the scoring split. Step 9 extends it to the full 30-50 and automates the scoring.

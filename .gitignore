@@ -16,3 +16,6 @@ spec/
 
 # Agent run records and checkpoints (ticket text, code snippets)
 data/runs/
+
+# The Jira trigger service's queue, spending and log (scripts/serve.py)
+data/service/
