@@ -21,7 +21,7 @@ Plan section = section of [autonomous_software_engineering_plan.md](../autonomou
 | 6 | Ticket reader: 6a intake, 6b understand, 6c clarify (pull out requirements; flag vague or unsafe tickets) | E8-S1 | In progress - agent built node by node in `specbridge/agent/` (see "Agent nodes" below): nodes 0-11 built (START ... reviewer with its retry loop, render, save_local, publish); the whole graph has run live, including publish and a retry round |
 | 7 | Agent (LangGraph): 7a skeleton + state + checkpointer, 7b code source, 7c orchestrator, 7d criterion worker, 7e e2e worker, 7f merge, 7g reviewer, 7h wire up and limits | E6, E8 | Planned |
 | 8 | Output: 8a render + save_local, 8b publish to Confluence and comment on Jira, 8c command line + simple local page, 8d bot account, 8e "Run SpecBridge" button in Jira | E9, E11, E12 | In progress - 8a, 8b done (nodes 9-11); 8e built (live check from Jira pending); 8c, 8d open |
-| 9 | Golden answers and scoring: rubric, LLM judge, ship gate | E10 | Planned |
+| 9 | Golden answers and scoring: rubric, LLM judge, ship gate | E10 | Started 2026-11-12: eval rounds by hand (`scripts/eval_sheet.py`, `docs/EVAL_GUIDE.md`); the LLM judge, more labels and the ship gate are next |
 | 10 | Improve over 3+ rounds; compare LLM against SLM, several workers against one, and code library against live GitHub (former Step 5) | E3, E4, E5, E10 | Planned |
 | 11 | Real users (5+, not classmates), one-page PRD, demo, presentation | - | Planned |
 

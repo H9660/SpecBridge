@@ -1,6 +1,6 @@
 # Test tickets: every path through SpecBridge v1
 
-Which ticket tests which path through the app, what should happen, and what counts as a fail. Use it to test the app by hand and as the starting point for the evals (build step 9).
+Which ticket tests which path through the app, what should happen, and what counts as a fail. Use it to test the app by hand and as the starting point for the evals (build step 9). **To run an eval round and record the results in one place, follow [EVAL_GUIDE.md](EVAL_GUIDE.md).**
 
 **Where the tickets come from** (all in Jira project `SPEC` unless marked *new*):
 
