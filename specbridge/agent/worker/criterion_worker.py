@@ -35,8 +35,8 @@ E2E_PROMPT = PROJECT / "prompts" / "e2e.md"
 MAX_FLOWS = 3
 AGENT_MAX_TOKENS = 2000
 CASES_MAX_TOKENS = 8000
-CONTEXT_CAP = 15_000              # tokens of conversation per worker on the cloud model (D8)
-EVIDENCE_CHARS = 48_000           # about 12k tokens of read code given to write_cases
+CONTEXT_CAP = 15_000              # tokens of conversation per worker on the cloud model (D8); profile worker_context_cap
+EVIDENCE_CHARS = 48_000           # about 12k tokens of read code given to write_cases; profile evidence_chars
 EVIDENCE_ITEM_CHARS = 6_000
 CASE_TYPES = ["happy", "negative", "edge", "permission", "empty-state"]
 STR = {"type": "string"}
@@ -153,7 +153,7 @@ def e2e_start_message(brief, item):
     return "\n".join(lines)
 
 
-def cases_message(brief, item, evidence):
+def cases_message(brief, item, evidence, evidence_chars=EVIDENCE_CHARS):
     s = item["slice"]
     e2e = item.get("mode") == "e2e"
     lines = ["Shared brief (data):", json.dumps(brief, indent=1, ensure_ascii=False), "",
@@ -170,7 +170,7 @@ def cases_message(brief, item, evidence):
     used = 0
     for e in evidence:
         text = e["text"][:EVIDENCE_ITEM_CHARS]
-        if used + len(text) > EVIDENCE_CHARS:
+        if used + len(text) > evidence_chars:
             lines.append(f"{e['id']} {e['repo']}/{e['path']} lines {e['lines'][0]}-{e['lines'][1]} (not shown: space)")
             continue
         used += len(text)
@@ -258,7 +258,15 @@ def status_of(cases, untestable, item, scope, stop):
 
 # --- the subgraph -------------------------------------------------------------------------------------
 
+def _profile_limit(brain, name, default):
+    """A size limit from the brain's profile (config/brains.json), e.g. smaller for the SLM's context (D8, D29)."""
+    return (getattr(brain, "profile", None) or {}).get(name, default)
+
+
 def build(agent_brain, writer_brain, source):
+    context_cap = _profile_limit(agent_brain, "worker_context_cap", CONTEXT_CAP)
+    evidence_chars = _profile_limit(writer_brain, "evidence_chars", EVIDENCE_CHARS)
+
     def receive_slice(state):
         version, instructions = load_prompt(AGENT_PROMPT)
         item = state["work_item"]
@@ -301,7 +309,7 @@ def build(agent_brain, writer_brain, source):
         args, problem = tl.parse_args(action.get("args_json"))
         text, _ = (f"TOOL ERROR: {problem}", []) if problem else \
             tl.run(source, action["action"], args, evidence, why=_safe(action.get("thought", ""))[:160])
-        messages, n = ev.compact(state["messages"] + [{"role": "user", "content": text}], CONTEXT_CAP)
+        messages, n = ev.compact(state["messages"] + [{"role": "user", "content": text}], context_cap)
         return {"messages": messages, "evidence": evidence, "tool_calls": state["tool_calls"] + 1, "action": {},
                 "meta": {**state["meta"], "compacted": state["meta"]["compacted"] + n}}
 
@@ -311,7 +319,7 @@ def build(agent_brain, writer_brain, source):
             return {"draft": {"cases": [], "flows": [], "untestable": [], "questions": [], "notes": [],
                               "missing": "no code was read, so no test case could be grounded"}}
         version, instructions = load_prompt(E2E_PROMPT if e2e else CASES_PROMPT)
-        user = cases_message(state["brief"], state["work_item"], state["evidence"])
+        user = cases_message(state["brief"], state["work_item"], state["evidence"], evidence_chars)
         try:
             reply = writer_brain.ask_json(user, E2E_SCHEMA if e2e else CASES_SCHEMA, system=instructions,
                                           max_tokens=CASES_MAX_TOKENS)

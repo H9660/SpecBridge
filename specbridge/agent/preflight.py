@@ -50,17 +50,25 @@ def check_brain(env=None, network=True, fetch=fetch_json):
     try:
         models = fetch(f"{brain.base_url}/models", auth).get("data", [])
     except HTTPStatus as err:
+        if err.code in (400, 401, 403) and brain.profile.get("api_key_env") and brain.profile.get("api") == "slm-host":
+            raise PreflightError(f"the SLM host refused {brain.profile['api_key_env']}: use the key the host was "
+                                 "started with (scripts/slm_host.py, docs/DEPLOY_SLM.md)") from None
         if err.code in (400, 401, 403) and brain.profile.get("api_key_env"):   # Google answers a bad key with 400
             page = KEY_PAGES.get(brain.provider, "the provider's settings")
             raise PreflightError(f"{brain.provider} rejected {brain.profile['api_key_env']} (invalid, revoked or "
                                  f"restricted); create a new key at {page}") from None
         raise PreflightError(f"{brain.provider} answered HTTP {err.code} at {brain.base_url}; try again later") from None
     except (urllib.error.URLError, TimeoutError, OSError) as err:
+        if brain.profile.get("api") == "slm-host":
+            raise PreflightError(f"cannot reach the SLM host at {brain.base_url} ({_reason(err)}); is the Kaggle "
+                                 f"notebook running, and is {brain.profile.get('base_url_env', 'base_url')} the "
+                                 "address it printed last? (docs/DEPLOY_SLM.md)") from None
         raise PreflightError(f"cannot reach {brain.provider} at {brain.base_url} ({_reason(err)}); "
                              "check the internet connection, or use --no-preflight for offline work") from None
     ids = {(m.get("id") or "").removeprefix("models/") for m in models}
     if brain.model not in ids:
-        where = "pull it with `ollama pull`" if brain.provider == "ollama" else "check BRAIN_MODEL / config/brains.json"
+        where = ("the SLM host has not pulled it: add it to scripts/slm_host.py --models and restart the host"
+                 if brain.provider == "ollama" else "check BRAIN_MODEL / config/brains.json")
         raise PreflightError(f"model {brain.model!r} is not offered by {brain.provider}; {where}")
     return info
 

@@ -36,15 +36,31 @@
       }
     },
     "slm": {
-      "api": "openai-chat",
+      "api": "slm-host",
       "provider": "ollama",
-      "base_url": "http://127.0.0.1:11434/v1",
-      "model": "qwen2.5-coder:3b",
-      "api_key_env": null,
+      "base_url": "http://127.0.0.1:8000/v1",
+      "base_url_env": "SLM_BASE_URL",
+      "model": "qwen2.5-coder:14b",
+      "api_key_env": "SLM_API_KEY",
       "structured_outputs": true,
       "context_window": 32768,
-      "timeout_seconds": 900,
-      "note": "Not set up yet. The SLM course picks the model; install Ollama and run `ollama pull <model>`."
+      "worker_context_cap": 12000,
+      "evidence_chars": 32000,
+      "timeout_seconds": 1800,
+      "unreachable_seconds": 120,
+      "poll_seconds": 2,
+      "http_retries": 2,
+      "note": "The SLM host (scripts/slm_host.py, ADR D29, docs/DEPLOY_SLM.md): Ollama on a Kaggle GPU (T4 x2) behind a key check and a Cloudflare quick tunnel. SLM_BASE_URL is the address the host prints (base_url is the host run on this laptop with --no-tunnel); SLM_API_KEY is the host's key. Answers are jobs that are polled, so the tunnel's ~100 s limit never applies. The context sizes per model are set by the host (--models); worker_context_cap and evidence_chars keep the worker's prompts inside them. No cost is reported (the GPU is free), so cost_usd is empty.",
+      "roles": {
+        "worker_agent": {
+          "model": "qwen2.5-coder:7b",
+          "note": "The worker's search turns (many short JSON tool choices): the smaller, faster model of the same family (ADR D23, D29). Host context 20480."
+        },
+        "reviewer": {
+          "model": "llama3.1:8b",
+          "note": "The independent reviewer: another model family from the writers (ARCHITECTURE.md section 3, ADR D25, D29). All three models fit in a T4 x2 at once, so none is swapped out during a run. Host context 24576."
+        }
+      }
     }
   }
 }

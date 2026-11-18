@@ -72,9 +72,10 @@ def load_settings(env=None, config_path=CONFIG):
     if unknown:
         raise SettingsError(f"unknown setting(s) {unknown} in {config_path.name}; known: {sorted(known)}")
     values = {k: v for k, v in raw.items() if k in known}
-    if isinstance(values.get("max_concurrency"), dict):   # one value per brain
-        brain = env.get("BRAIN") or "llm"
-        values["max_concurrency"] = values["max_concurrency"].get(brain, Settings.max_concurrency)
+    brain = env.get("BRAIN") or "llm"
+    for name, value in values.items():                     # a setting may give one value per brain
+        if isinstance(value, dict):
+            values[name] = value.get(brain, getattr(Settings, name))
     return Settings(**{k: _check(k, v) for k, v in values.items()})
 
 

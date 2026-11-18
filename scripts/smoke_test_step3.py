@@ -104,9 +104,11 @@ def main():
     default = load_brain(env=env)
     check("Default brain is the cloud LLM: Gemini, called directly at Google",
           (default.name, default.provider) == ("llm", "google"), repr(default))
-    slm = load_brain(env={"BRAIN": "slm"})
-    check("BRAIN=slm switches to the local SLM with no code change",
-          (slm.name, slm.provider, slm._api_key) == ("slm", "ollama", None), repr(slm))
+    slm = load_brain(env={"BRAIN": "slm", "SLM_API_KEY": "slm-test-key-0123456789",
+                          "SLM_BASE_URL": "https://example.trycloudflare.com"})
+    check("BRAIN=slm switches to the SLM host (Ollama behind a key and a tunnel) with no code change",
+          (slm.name, slm.provider, type(slm).__name__, slm.base_url)
+          == ("slm", "ollama", "SLMHostBrain", "https://example.trycloudflare.com/v1"), repr(slm))
     other = load_brain(env={**env, "BRAIN_MODEL": "gemini-4-argon"})
     check("BRAIN_MODEL swaps in another Gemini model", other.model == "gemini-4-argon", repr(other))
     errors = []
@@ -180,10 +182,10 @@ def main():
 
     def slm_path():
         fake.script((200, '{"kind": "bug", "steps": ["a"]}'))
-        r = fake.brain("slm", model="qwen2.5-coder:3b").ask_json(TICKET, TICKET_SCHEMA)
-        check("Same code path works for a local SLM-style server (no key sent)",
+        r = fake.brain("slm", model="qwen2.5-coder:3b", api_key_env=None).ask_json(TICKET, TICKET_SCHEMA)
+        check("Same code path works for a plain Ollama-style server with no key",
               r.brain == "slm" and "Authorization" not in fake.requests[0]["headers"], f"{r.provider} {r.model}")
-    attempt("Same code path works for a local SLM-style server (no key sent)", slm_path)
+    attempt("Same code path works for a plain Ollama-style server with no key", slm_path)
 
     tracked = subprocess.run(["git", "grep", "--untracked", "-l", "-E", "sk-or-v1-[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}"], cwd=PROJECT,
                              capture_output=True, text=True).stdout.split()
