@@ -9,6 +9,7 @@ import urllib.error
 import urllib.request
 
 from specbridge.brain import BrainError, load_brain
+from specbridge.env import network_hint
 
 
 class PreflightError(RuntimeError):
@@ -57,7 +58,7 @@ def check_brain(env=None, network=True, fetch=fetch_json):
         raise PreflightError(f"{brain.provider} answered HTTP {err.code} at {brain.base_url}; try again later") from None
     except (urllib.error.URLError, TimeoutError, OSError) as err:
         raise PreflightError(f"cannot reach {brain.provider} at {brain.base_url} ({_reason(err)}); "
-                             "check the internet connection, or use --no-preflight for offline work") from None
+                             f"{network_hint(err)}, or use --no-preflight for offline work") from None
     ids = {(m.get("id") or "").removeprefix("models/") for m in models}
     if brain.model not in ids:
         where = "pull it with `ollama pull`" if brain.provider == "ollama" else "check BRAIN_MODEL / config/brains.json"

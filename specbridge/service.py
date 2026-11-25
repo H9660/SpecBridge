@@ -178,7 +178,12 @@ class Service:
                 key = self.queue.pop(0)
                 self.running = key
                 self._save_queue()
-            cost = self.run_one(key)
+            try:
+                cost = self.run_one(key)
+            except Exception as err:  # noqa: BLE001 - last guard: the worker thread must never die (D9)
+                log.warning("%s: run crashed outside the graph: %s", key, _short(f"{type(err).__name__}: {err}"))
+                self.comment(key, FAILED.format(marker=COMMENT_MARKER, key=key, reason=_short(err)))
+                cost = 0.0
             with self.lock:
                 self._roll_day()
                 self.running = None
@@ -191,8 +196,15 @@ class Service:
 
     def run_one(self, key):
         """Run one ticket; returns its cost. Any failure ends in a comment, never in a stopped service."""
-        from specbridge.agent.graph import new_run_id
-        run_id = new_run_id()
+        try:
+            from specbridge.agent.graph import new_run_id   # loads LangGraph: fails if its packages cannot load
+            run_id = new_run_id()
+        except Exception as err:  # noqa: BLE001 - no run started, so no record and no cost
+            log.warning("%s: run not started, the agent could not be loaded: %s", key,
+                        _short(f"{type(err).__name__}: {err}"))
+            self.comment(key, FAILED.format(marker=COMMENT_MARKER, key=key,
+                                            reason=_short(f"the agent could not be loaded ({err})")))
+            return 0.0
         log.info("%s: run %s started (%s)", key, run_id, self.mode)
         try:
             result = self.runner(key, run_id)

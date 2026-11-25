@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-from specbridge.env import PROJECT, load_env
+from specbridge.env import PROJECT, is_certificate_error, load_env, network_hint
 
 CONFIG = PROJECT / "config" / "brains.json"
 RETRY_STATUS = {408, 429, 500, 502, 503, 504}
@@ -76,8 +76,9 @@ class OpenAIChatBrain:
                 if hint.isdigit():  # busy servers (e.g. free-tier keys) say how long to wait
                     wait = min(int(hint), MAX_WAIT_SECONDS)
             except (urllib.error.URLError, TimeoutError) as err:
-                if attempt == self.http_retries:
-                    raise BrainError(f"cannot reach {self.provider} at {self.base_url}: {err}") from None
+                if attempt == self.http_retries or is_certificate_error(err):   # retrying cannot fix certificates
+                    raise BrainError(f"cannot reach {self.provider} at {self.base_url}: {err}; "
+                                     f"{network_hint(err)}") from None
             time.sleep(wait)
 
     def _chat(self, messages, max_tokens, temperature, response_format=None):
@@ -164,7 +165,7 @@ class OpenAIChatBrain:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 ids = {m["id"].removeprefix("models/") for m in json.load(resp).get("data", [])}
         except (urllib.error.URLError, TimeoutError) as err:
-            raise BrainError(f"cannot reach {self.provider} at {self.base_url}: {err}") from None
+            raise BrainError(f"cannot reach {self.provider} at {self.base_url}: {err}; {network_hint(err)}") from None
         return self.model in ids
 
 

@@ -10,7 +10,9 @@ with the labels. An existing page is updated only if SpecBridge wrote its curren
 in the page property "specbridge", or a version message starting "[SpecBridge]"); if a person edited it since,
 nothing is overwritten and the new draft goes in as a comment on the page.
 Jira: one comment per ticket, found by its "[SpecBridge]" marker among this account's comments, updated on re-runs;
-{page_url} is filled in with the page's address.
+{page_url} is filled in with the page's address. The comment is written as plain text (by render, clarify or the
+service) and formatted here (comment_adf): the title line bold with the ticket key underlined, labels such as
+"Page:" bold, counts bold, numbered lines as a numbered list, a line in brackets in italics.
 If publishing fails, the page is saved locally instead (as save_local does), so the work is never lost.
 Out: state["published"] = {page_id, page_url, page_action, page_version, comment_id, comment_action, error,
 fallback}.
@@ -63,21 +65,74 @@ def checks(state, env):
     return key
 
 
+TITLE = re.compile(rf"({re.escape(COMMENT_MARKER)}) ([A-Z][A-Z0-9]*-\d+): (.*)")
+LABEL = re.compile(r"(Page|Reason|Why|Full details|To get test cases|Questions for the PM):(.*)")
+LIST_ITEM = re.compile(r"(\d+)\. (.+)")
+EMPHASIS = re.compile(            # counts and key phrases shown in bold wherever they appear
+    r"\b\d+(?:-\d+)? (?:test cases?|acceptance criteria|cases?|open questions?|minutes|other tickets?|ok|"
+    r"needs? attention|untestable|skipped|uncovered|failed)\b|\"may be ambiguous\"|Actions -> Run SpecBridge")
+
+
+def _text(text, marks=(), link=None):
+    node = {"type": "text", "text": text}
+    kinds = [{"type": m} for m in dict.fromkeys(marks)] + ([{"type": "link", "attrs": {"href": link}}] if link else [])
+    if kinds:
+        node["marks"] = kinds
+    return node
+
+
+def _inline(line, url, marks=()):
+    """Text nodes for one line: the page address as a link, counts and key phrases in bold."""
+    out = []
+    for n, part in enumerate(line.split(url) if url else [line]):
+        if n:
+            out.append(_text(url, marks, link=url))
+        at = 0
+        for m in EMPHASIS.finditer(part):
+            if m.start() > at:
+                out.append(_text(part[at:m.start()], marks))
+            out.append(_text(m.group(), (*marks, "strong")))
+            at = m.end()
+        if part[at:]:
+            out.append(_text(part[at:], marks))
+    return out
+
+
+def _line(line, url):
+    """One paragraph's content: the title line in bold with the ticket key underlined, labels in bold,
+    a whole line in brackets in italics."""
+    title, label = TITLE.fullmatch(line), LABEL.fullmatch(line)
+    if title:
+        marker, key, head = title.groups()
+        return [_text(marker, ["strong"]), _text(" "), _text(key, ["strong", "underline"]), _text(": ", ["strong"]),
+                *_inline(head, url, ["strong"])]
+    if label:
+        name, rest = label.groups()
+        marks = ["strong", "underline"] if not rest.strip() else ["strong"]
+        return [_text(f"{name}:", marks), *_inline(rest, url)]
+    if line.startswith("(") and line.endswith(")"):
+        return _inline(line, url, ["em"])
+    return _inline(line, url)
+
+
 def comment_adf(text, url):
-    """Plain text -> Atlassian document format: one paragraph per line, the page address as a link."""
-    paragraphs = []
+    """Plain text -> Atlassian document format: one paragraph per line, numbered lines as a numbered list, the
+    page address as a link, and some bold, underlined and italic text (see _line)."""
+    blocks = []
     for line in text.replace(PAGE_LINK, url).split("\n"):
-        if not line.strip():
+        line = line.strip()
+        if not line:
             continue
-        parts = line.split(url) if url else [line]
-        content = []
-        for n, part in enumerate(parts):
-            if part:
-                content.append({"type": "text", "text": part})
-            if n < len(parts) - 1:
-                content.append({"type": "text", "text": url, "marks": [{"type": "link", "attrs": {"href": url}}]})
-        paragraphs.append({"type": "paragraph", "content": content})
-    return {"type": "doc", "version": 1, "content": paragraphs}
+        item = LIST_ITEM.fullmatch(line)
+        if item:
+            entry = {"type": "listItem", "content": [{"type": "paragraph", "content": _inline(item[2], url)}]}
+            if blocks and blocks[-1]["type"] == "orderedList":
+                blocks[-1]["content"].append(entry)
+            else:
+                blocks.append({"type": "orderedList", "attrs": {"order": int(item[1])}, "content": [entry]})
+            continue
+        blocks.append({"type": "paragraph", "content": _line(line, url)})
+    return {"type": "doc", "version": 1, "content": blocks}
 
 
 def adf_text(node):

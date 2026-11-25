@@ -53,8 +53,32 @@ def test_the_space_key_confluence_reports_is_used_not_an_old_alias():
 def test_the_page_address_in_the_comment_is_a_link():
     adf = comment_adf("[SpecBridge] SPEC-1: x\nPage: {page_url}", URL)
     last = adf["content"][-1]["content"]
-    assert last[0] == {"type": "text", "text": "Page: "}
-    assert last[1]["marks"] == [{"type": "link", "attrs": {"href": URL}}]
+    assert last[0] == {"type": "text", "text": "Page:", "marks": [{"type": "strong"}]}
+    assert last[1] == {"type": "text", "text": " "}
+    assert last[2]["marks"] == [{"type": "link", "attrs": {"href": URL}}]
+
+
+def test_the_comment_is_formatted_but_its_text_is_unchanged():
+    text = ("[SpecBridge] SPEC-66: UAT test cases ready for PM review\n"
+            "6 test cases for 3 acceptance criteria (3 ok).\n"
+            "1 case is flagged \"may be ambiguous\".\n\n"
+            "Questions for the PM:\n1. First?\n2. Second?\n"
+            "(Queued behind 2 other tickets.)\n"
+            "Page: {page_url}")
+    adf = comment_adf(text, URL)
+    title, counts, flagged, questions, numbered, queued, page = adf["content"]
+
+    def marked(block, mark):
+        return [n["text"] for n in block["content"] if {"type": mark} in n.get("marks", [])]
+    assert marked(title, "underline") == ["SPEC-66"]
+    assert all({"type": "strong"} in n["marks"] for n in title["content"] if n["text"].strip())
+    assert marked(counts, "strong") == ["6 test cases", "3 acceptance criteria", "3 ok"]
+    assert marked(flagged, "strong") == ["1 case", "\"may be ambiguous\""]
+    assert marked(questions, "underline") == ["Questions for the PM:"]
+    assert numbered["type"] == "orderedList" and len(numbered["content"]) == 2
+    assert all({"type": "em"} in n["marks"] for n in queued["content"])
+    assert marked(page, "strong") == ["Page:"]
+    assert adf_text(adf) == text.replace("{page_url}", URL).replace("\n", "").replace("1. ", "").replace("2. ", "")
 
 
 # --- re-runs: update, never overwrite a person's edit --------------------------------------------------

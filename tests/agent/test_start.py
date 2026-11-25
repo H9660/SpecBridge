@@ -1,6 +1,7 @@
 """Node 0 - START: request checks, settings, brain check, run creation, checkpoints, run record."""
 import json
 import os
+import ssl
 import subprocess
 import sys
 import urllib.error
@@ -253,6 +254,8 @@ def test_offline_brain_check_makes_no_call():
     ({**ENV, "BRAIN_MODEL": "gemini-typo"}, {"models": MODELS}, "'gemini-typo' is not offered"),
     (ENV, {"models": urllib.error.URLError("no route")}, "cannot reach google"),
     (ENV, {"models": TimeoutError()}, "cannot reach google"),
+    (ENV, {"models": urllib.error.URLError(ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] x"))},
+     r"cannot reach google .*cannot check website certificates; run SpecBridge with the project venv"),
     (ENV, {"models": preflight.HTTPStatus(503)}, "answered HTTP 503"),
 ])
 def test_brain_check_refusals_never_show_the_key(env, answers, message):

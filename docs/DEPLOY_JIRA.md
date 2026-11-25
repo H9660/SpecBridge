@@ -71,6 +71,17 @@ You should get `{"ok": true}`, then `{"queued": true, "position": 1}`. In dry-ru
 
 It checks Gemini and the Confluence space first, and refuses to start if something is wrong. It listens only on this machine (`127.0.0.1:8765`).
 
+**On a Windows laptop, run it in WSL instead.** Windows Smart App Control blocks compiled files that LangGraph needs, so a run fails on Windows even though the service starts. The code and data stay in the Windows project folder; only the Python venv lives in Linux.
+
+| Step | Command (from Windows, in the project folder) |
+|---|---|
+| Once: mirrored networking, so WSL reaches Ollama on Windows and `cloudflared` on Windows reaches the service | put `[wsl2]` and `networkingMode=mirrored` in `%USERPROFILE%\.wslconfig`, then `wsl --shutdown` |
+| Once: install Ubuntu | `wsl --install -d Ubuntu-24.04 --no-launch --web-download` |
+| Once: the Linux venv and packages | `wsl -d Ubuntu-24.04 -u root -- bash scripts/wsl_serve.sh setup` |
+| Every time: start the service | `wsl -d Ubuntu-24.04 -u root -- bash scripts/wsl_serve.sh start` (add `--dry-run` to try it) |
+
+`cloudflared` keeps running on Windows with the same `--url http://localhost:8765`.
+
 ## 5. Give it a public address (Cloudflare quick tunnel)
 
 Jira Cloud must reach the service over HTTPS. A Cloudflare quick tunnel does this for free, without an account.
@@ -132,6 +143,7 @@ Open any SPEC ticket → **Actions** (or the ⚡ menu) → **Run SpecBridge**.
 | **403** | the ticket is not in the `SPEC` project | only `SPEC` tickets can be run |
 | **429** | the same ticket ran less than 10 minutes ago, the queue is full, or today's limit is reached | wait; the reason is in the response and, for the limit, on the ticket |
 | The comment says "could not be generated" | Gemini or Atlassian failed during the run (for example Google "high demand") | press the button again later; details in `service.log` and the run record |
+| The comment says "could not be generated" with "the agent could not be loaded"; `service.log` shows `DLL load failed ... An Application Control policy has blocked this file` | Windows Smart App Control blocks compiled files LangGraph needs (`uuid_utils`, `xxhash`, `ormsgpack`) | turn Smart App Control off (Windows Security -> App & browser control), or run the service on Linux / WSL |
 | The page shows another person's name | the token in `.env` is that person's | use the bot account (build step 8d) |
 
 ## Security

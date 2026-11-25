@@ -1,5 +1,6 @@
 """Node 1 - intake: reference parsing and scope, fetching, rich text -> plain text, secrets, AI-aimed text."""
 import json
+import ssl
 import urllib.error
 
 import pytest
@@ -121,6 +122,9 @@ def test_missing_settings_are_named_not_shown():
     ([JiraError("x", 503), JiraError("x", 503)], "Jira answered HTTP 503", True, 2),
     ([urllib.error.URLError("no route"), urllib.error.URLError("no route")], "cannot reach Jira", True, 2),
     ([TimeoutError(), TimeoutError()], "cannot reach Jira", True, 2),
+    # a certificate failure is not retried and names the Python, instead of blaming the internet
+    ([urllib.error.URLError(ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] failed"))],
+     "cannot check website certificates", True, 1),
 ])
 def test_fetch_errors(errors, message, retryable, calls):
     jira = FakeJira(errors=errors)

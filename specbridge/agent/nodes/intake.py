@@ -15,7 +15,7 @@ import urllib.parse
 
 from specbridge import ticket_text
 from specbridge.atlassian import Atlassian, JiraError, missing_settings
-from specbridge.env import load_env
+from specbridge.env import is_certificate_error, load_env, network_hint
 
 NEEDED = ("ATLASSIAN_SITE", "ATLASSIAN_EMAIL", "ATLASSIAN_API_TOKEN", "JIRA_PROJECT_KEY")
 KEY = re.compile(r"([A-Za-z][A-Za-z0-9_]*)-(\d+)")
@@ -82,9 +82,9 @@ def fetch(client, key, sleep=time.sleep):
                 raise IntakeError(f"Jira answered HTTP {err.status} for {key}; try again later",
                                   retryable=err.status in RETRY_STATUS) from None
         except (urllib.error.URLError, TimeoutError, OSError) as err:
-            if attempt == 2:
+            if attempt == 2 or is_certificate_error(err):   # a certificate error will not fix itself
                 reason = getattr(err, "reason", None) or type(err).__name__
-                raise IntakeError(f"cannot reach Jira ({reason}); check the internet connection and resume",
+                raise IntakeError(f"cannot reach Jira ({reason}); {network_hint(err)} and resume",
                                   retryable=True) from None
         sleep(2)
 
