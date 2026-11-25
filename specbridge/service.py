@@ -36,9 +36,10 @@ MIN_SECRET_CHARS = 24
 MAX_BODY = 4096
 TICKET_KEY = re.compile(r"[A-Z][A-Z0-9]{1,9}-\d{1,7}")
 BUTTON = "Actions -> Run SpecBridge"
+USUAL_TIME = {"llm": "2-5 minutes", "slm": "5-15 minutes"}   # SLM: about 6 min for SPEC-1 on Kaggle T4 x2 (ADR D29)
 
 STARTED = ("{marker} {key}: Generating UAT test cases for PM and engineering review\n"
-           "SpecBridge is reading the ticket and the code. This usually takes 2-5 minutes; this comment will be "
+           "SpecBridge is reading the ticket and the code. This usually takes {usually}; this comment will be "
            "updated with a link to the UAT page.{queued}")
 FAILED = ("{marker} {key}: UAT test cases could not be generated this time\n"
           "Reason: {reason}\n"
@@ -153,7 +154,8 @@ class Service:
             return 429, {"queued": False, "reason": "the daily SpecBridge limit is reached"}
         log.info("%s: queued (%d ahead)", key, ahead)
         queued = f"\n(Queued behind {ahead} other ticket{'s' if ahead != 1 else ''}.)" if ahead else ""
-        self.comment(key, STARTED.format(marker=COMMENT_MARKER, key=key, queued=queued))
+        usually = USUAL_TIME.get(self.env.get("BRAIN") or "llm", USUAL_TIME["llm"])
+        self.comment(key, STARTED.format(marker=COMMENT_MARKER, key=key, queued=queued, usually=usually))
         return 202, {"queued": True, "position": ahead + 1}
 
     # --- the worker ---

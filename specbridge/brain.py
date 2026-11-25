@@ -1,16 +1,18 @@
-"""The swappable "brain": one interface for cloud LLMs (OpenRouter) and local SLMs (Ollama).
+"""The swappable "brain": one interface for cloud LLMs (Gemini) and small models (SLMs on the SLM host).
 
 Everything else in SpecBridge calls `load_brain()` and then `ask()` / `ask_json()`; it never talks
 to a model provider directly. Which brain is used comes from config/brains.json:
   BRAIN=llm (default) or BRAIN=slm     pick a profile
   BRAIN_MODEL=<model id>               override the profile's model (e.g. any OpenRouter model)
 A provider with a different API style gets a new class with the same methods, added to ADAPTERS.
+The SLM brain talks to scripts/slm_host.py (Ollama on a Kaggle GPU behind a key check and a tunnel, ADR D29).
 """
 import json
 import re
 import time
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass
 
 from specbridge.env import PROJECT, is_certificate_error, load_env, network_hint
@@ -18,6 +20,7 @@ from specbridge.env import PROJECT, is_certificate_error, load_env, network_hint
 CONFIG = PROJECT / "config" / "brains.json"
 RETRY_STATUS = {408, 429, 500, 502, 503, 504}
 MAX_WAIT_SECONDS = 30
+TUNNEL_STATUS = {520, 521, 522, 523, 524, 525, 526, 527, 530}   # Cloudflare: the host or its tunnel is not answering
 
 
 class BrainError(RuntimeError):
@@ -169,7 +172,86 @@ class OpenAIChatBrain:
         return self.model in ids
 
 
-ADAPTERS = {"openai-chat": OpenAIChatBrain}
+class SLMHostBrain(OpenAIChatBrain):
+    """The SLM host (scripts/slm_host.py, ADR D29): Ollama behind a key check, reached through a tunnel.
+
+    A chat answer is a job: submitted (answers at once), then asked for every `poll_seconds` until it is done, so no
+    request waits long enough for the tunnel to cut it (about 100 s). Network trouble is retried until the host has
+    been unreachable for `unreachable_seconds`; a job the host lost (it restarted) is sent again under the same id,
+    which runs it once; a busy answer (503 etc.) is retried as for any brain. `timeout_seconds` caps one call,
+    waiting in the host's queue included; a job still waiting then is cancelled."""
+
+    REQUEST_SECONDS = 30
+
+    def _post(self, path, body):
+        if path != "/chat/completions":
+            return super()._post(path, body)
+        deadline = time.time() + self.profile.get("timeout_seconds", 1800)
+        for attempt in range(self.http_retries + 1):
+            state = self._run_job(body, deadline)
+            if state.get("status") == "done":
+                return state["result"]
+            code = state.get("http_status") or 500
+            detail = _error_detail(json.dumps(state.get("result") or {}))
+            if code not in RETRY_STATUS or attempt == self.http_retries or time.time() >= deadline:
+                raise BrainError(f"the SLM host returned {code} after {attempt + 1} tries: {detail}")
+            time.sleep(min(2 ** (attempt + 1), MAX_WAIT_SECONDS))
+
+    def _run_job(self, body, deadline):
+        submit = {"id": uuid.uuid4().hex, "request": body}
+        state = self._call("POST", "/jobs", submit)
+        while state.get("status") in ("queued", "running"):
+            if time.time() >= deadline:
+                self._cancel(submit["id"])
+                raise BrainError(f"no answer from the SLM host within {self.profile.get('timeout_seconds', 1800)} s "
+                                 f"(the job was still {state['status']}); the host may be overloaded")
+            time.sleep(self.profile.get("poll_seconds", 2))
+            state = self._call("GET", f"/jobs/{submit['id']}")
+            if state is None:              # the host restarted and lost the job: same id again, so it runs once
+                state = self._call("POST", "/jobs", submit)
+        return state
+
+    def _call(self, method, path, body=None):
+        """One short request to the host: its JSON answer, or None when a job is unknown (GET 404)."""
+        give_up = time.time() + self.profile.get("unreachable_seconds", 120)
+        wait, last = 1, ""
+        while True:
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self._api_key}"}
+            data = json.dumps(body).encode() if body is not None else None
+            req = urllib.request.Request(f"{self.base_url}{path}", data=data, headers=headers, method=method)
+            try:
+                with urllib.request.urlopen(req, timeout=self.REQUEST_SECONDS) as resp:
+                    return json.load(resp)
+            except urllib.error.HTTPError as err:
+                detail = _error_detail(err.read().decode(errors="ignore"))
+                if err.code == 404 and method == "GET":
+                    return None
+                if err.code == 401:
+                    key = self.profile.get("api_key_env") or "the key"
+                    raise BrainError(f"the SLM host refused {key}: it must be the same key the host was started "
+                                     "with (scripts/slm_host.py)") from None
+                if err.code not in RETRY_STATUS | TUNNEL_STATUS:
+                    raise BrainError(f"the SLM host answered {err.code}: {detail}") from None
+                last = f"HTTP {err.code}"
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError) as err:
+                last = str(getattr(err, "reason", None) or err)
+            if time.time() + wait > give_up:
+                where = self.profile.get("base_url_env") or "base_url"
+                raise BrainError(f"cannot reach the SLM host at {self.base_url} ({last}); is the host (Kaggle "
+                                 f"notebook) running, and is {where} its current address?")
+            time.sleep(wait)
+            wait = min(wait * 2, 15)
+
+    def _cancel(self, job_id):
+        try:
+            req = urllib.request.Request(f"{self.base_url}/jobs/{job_id}", method="DELETE",
+                                         headers={"Authorization": f"Bearer {self._api_key}"})
+            urllib.request.urlopen(req, timeout=10).close()
+        except (urllib.error.URLError, TimeoutError, OSError):
+            pass
+
+
+ADAPTERS = {"openai-chat": OpenAIChatBrain, "slm-host": SLMHostBrain}
 
 
 def load_brain(name=None, env=None, config_path=CONFIG, role=None):
@@ -184,6 +266,8 @@ def load_brain(name=None, env=None, config_path=CONFIG, role=None):
     profile = dict(config["brains"][name])
     if env.get("BRAIN_MODEL"):
         profile["model"] = env["BRAIN_MODEL"]
+    if profile.get("base_url_env") and env.get(profile["base_url_env"]):
+        profile["base_url"] = _api_root(env[profile["base_url_env"]], profile["base_url_env"])
     if role and role in profile.get("roles", {}):
         profile.update(profile["roles"][role])
     adapter = ADAPTERS.get(profile.get("api"))
@@ -195,6 +279,14 @@ def load_brain(name=None, env=None, config_path=CONFIG, role=None):
         if not api_key:
             raise BrainError(f"brain '{name}' needs {profile['api_key_env']} in .env")
     return adapter(name, profile, api_key)
+
+
+def _api_root(url, name):
+    """A server address from .env (e.g. the tunnel address the SLM host prints), with or without /v1."""
+    url = url.strip().rstrip("/")
+    if not re.match(r"https?://[^/\s]+", url):
+        raise BrainError(f"{name} must be an http(s) address, like https://example.trycloudflare.com/v1")
+    return url if url.endswith("/v1") else url + "/v1"
 
 
 def _error_detail(raw):

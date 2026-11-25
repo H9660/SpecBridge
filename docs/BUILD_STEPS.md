@@ -3,7 +3,7 @@
 What we are building, one step at a time. After each step: report blockers, run its smoke test, and wait for "proceed" before starting the next. Keep this file updated as steps finish or the plan changes. Decisions behind the steps are in [USER_CLARIFICATIONS.md](USER_CLARIFICATIONS.md). The agent's design (Steps 6-9) is in [ARCHITECTURE.md](ARCHITECTURE.md), drawn in [architecture.drawio](architecture.drawio); the map below ties every box in the drawing to a step. What each file does is in [repo_map.md](repo_map.md): update it whenever a file is added or gains new functionality (`py -3.12 scripts/check_repo_map.py` lists files missing from it).
 
 **Product:** a Jira ticket goes in; SpecBridge reads the real code and writes UAT test cases to Confluence. Writing code (plan sections E5 and E7) is out of scope for now.
-**Brain:** cloud LLM through OpenRouter (default); local SLM can be switched in later.
+**Brain:** cloud LLM, Gemini called directly at Google (default); SLM brain on a Kaggle GPU host with `BRAIN=slm` (ADR D29, `docs/DEPLOY_SLM.md`).
 **Test code:** 5 OpenMRS 3 frontend repos, frozen at 31 March 2026, in the folder set by `SPECBRIDGE_WORKDIR` (Windows: `C:\specbridge-work`; Linux laptop: `/home/qasim/Documents/sem3/AutoSE/Project/specbridge-work`).
 **New to the project?** Follow [README.md](../README.md) first: it lists the original OpenMRS repo links with their frozen versions, how to clone them (one command: `py -3.12 scripts/setup_workspace.py`), and how to fill in `.env`.
 
@@ -15,7 +15,7 @@ Plan section = section of [autonomous_software_engineering_plan.md](../autonomou
 |---|---|---|---|
 | 1 | Pick test repos and real tickets; shortlist golden candidates | E10 (evaluation data) | Done |
 | 2 | Download frozen repos; copy 63 tickets into team Jira | E1, E11 (secrets) | Done |
-| 3 | Swappable brain: one interface for LLM and SLM | E2 | Done (SLM part waits until the SLM course needs it) |
+| 3 | Swappable brain: one interface for LLM and SLM | E2 | Done; SLM brain on a Kaggle host added and run end to end 2026-11-18 (ADR D29) |
 | 4 | Code library: index the repos and search them locally (SQLite + numpy) | E4 | Done (search 0.79 vs provisional 0.80 bar on tickets without file names - see 4c) |
 | 5 | Live GitHub code reading (second approach, to compare) | E4 / E5 | Moved into Step 10 (2026-10-28) |
 | 6 | Ticket reader: 6a intake, 6b understand, 6c clarify (pull out requirements; flag vague or unsafe tickets) | E8-S1 | In progress - agent built node by node in `specbridge/agent/` (see "Agent nodes" below): nodes 0-11 built (START ... reviewer with its retry loop, render, save_local, publish); the whole graph has run live, including publish and a retry round |
@@ -71,6 +71,9 @@ Every box in [architecture.drawio](architecture.drawio) and the step that builds
 - **Files:** `specbridge/brain.py`, `specbridge/env.py`, `config/brains.json`
 - **Default model:** `google/gemini-3.8-flash` through OpenRouter (switched from Claude Sonnet 5.5 on 2026-10-27).
 - **Found with the live key:** Gemini 3.8 Flash "thinks" before answering, and the thinking counts against `max_tokens`. With a limit of 20 it returned an empty answer. The brain now raises a clear error in that case instead of returning empty text. Later steps must give it room (hundreds of tokens even for short answers).
+- **SLM brain (2026-11-18, ADR D29):** three models on a Kaggle GPU (T4 x2): `qwen2.5-coder:14b` main, `qwen2.5-coder:7b` for the worker's search turns, `llama3.1:8b` reviewer (another family). `scripts/slm_host.py` runs Ollama behind a key check and a Cloudflare quick tunnel; `SLMHostBrain` submits each answer as a job and polls it, so the tunnel's 100 s limit never applies; the context is set per model on every request; the worker's prompt sizes and the time cap follow the brain. Settings `SLM_BASE_URL`, `SLM_API_KEY`. How to run: `docs/DEPLOY_SLM.md`.
+  - **Checked:** `tests/test_slm_host.py` (18 tests: fake Ollama + real host + real brain). Live on a Mac with real Ollama 0.40.6 and `llama3.2:1b`: preflight, schema-forced JSON for the worker's action and test-case schemas, wrong key, unserved model, answer limits, 4 parallel calls queued in order. The live check found one bug (a small `max_tokens` was raised to 1,024), now fixed and tested.
+  - **First Kaggle run (2026-11-18, SPEC-1, dry-run):** all three models answered through the tunnel; the whole graph ran in about 6 minutes (estimated 20-40). Found: the 7b search model split file locations at the wrong `/`, so 4 of 5 workers read no code. Fixed in the tool runner (`tools.fix_location`, tested), and the re-run's workers read 16, 2 and 4 pieces of code. AC3 (heap growth) was correctly marked untestable, and AC2 skipped as conflicting. AC1 still ended weak after the retry round, and the e2e worker read no code in its 4 calls. Quality against Gemini is compared in Step 10.
 - **Smoke test:** `scripts/smoke_test_step3.py` -> `data/smoke_test_step3.md` - 15 pass, 1 skipped (SLM not chosen yet). Live calls cost $0.0003 (plain) and $0.0027 (JSON; Gemini's first JSON answer was rejected and the automatic retry fixed it).
 
 ### Step 4a - Scoring and keyword baseline

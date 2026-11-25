@@ -269,11 +269,18 @@ def test_model_override_is_checked():
         "gemini-4-argon"
 
 
-def test_slm_brain_checks_the_local_model():
+def test_slm_brain_checks_the_model_on_the_slm_host():
     fetch = fake_fetch({"models": {"data": [{"id": "llama3:8b"}]}})
-    with pytest.raises(PreflightError, match="ollama pull"):
-        check_brain({"BRAIN": "slm"}, fetch=fetch)
-    assert [u.rsplit("/", 1)[1] for u, _ in fetch.calls] == ["models"]
+    env = {"BRAIN": "slm", "SLM_API_KEY": "slm-key-0123456789abcdef", "SLM_BASE_URL": "https://abc.trycloudflare.com"}
+    with pytest.raises(PreflightError, match="SLM host has not pulled it"):
+        check_brain(env, fetch=fetch)
+    assert [u for u, _ in fetch.calls] == ["https://abc.trycloudflare.com/v1/models"]
+    assert fetch.calls[0][1] == {"Authorization": "Bearer slm-key-0123456789abcdef"}
+
+
+def test_slm_brain_needs_its_key():
+    with pytest.raises(PreflightError, match="SLM_API_KEY"):
+        check_brain({"BRAIN": "slm"}, fetch=fake_fetch({}))
 
 
 # --- command line ----------------------------------------------------------------------------------

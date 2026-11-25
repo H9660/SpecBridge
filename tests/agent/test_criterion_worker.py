@@ -359,3 +359,28 @@ def test_workers_run_in_parallel_and_one_crash_does_not_stop_the_others(start, r
 def test_no_work_items_means_no_workers(start):
     r = start("SPEC-66", settings=Settings(cost_cap_usd=0.001))   # understand alone spends more than that
     assert "criterion_worker" not in [t["node"] for t in r.state["trace"]] and r.status == "incomplete"
+
+
+def test_file_location_split_at_the_wrong_slash_is_fixed():
+    """Small models copy 'core/packages/x/src/a.ts' as repo 'core/packages/x' + path 'src/a.ts' (seen on the SLM)."""
+    fix = tl.fix_location
+    want = {"repo": "core", "path": "packages/x/src/a.ts"}
+    assert fix({"repo": "core/packages/x", "path": "src/a.ts"}) == want
+    assert fix({"repo": "", "path": "core/packages/x/src/a.ts"}) == want
+    assert fix({"repo": "core/", "path": "./packages/x/src/a.ts"}) == want
+    assert fix({"repo": "core", "path": "packages/x/src/a.ts", "start_line": 3}) == {**want, "start_line": 3}
+    assert fix({"repo": "r", "path": "p.tsx"}) == {"repo": "r", "path": "p.tsx"}          # no known repo: unchanged
+
+
+def test_wrong_split_still_reads_the_file():
+    seen = []
+
+    class Source:
+        def call(self, name, args):
+            seen.append(args)
+            return {"repo": args["repo"], "path": args["path"], "start_line": 1, "end_line": 2, "text": "1: a\n2: b"}
+    evidence = []
+    text, new = tl.run(Source(), "read_file", {"repo": "patient-chart/packages/esm-x", "path": "src/b.tsx"}, evidence)
+    assert seen[0]["repo"] == "patient-chart" and seen[0]["path"] == "packages/esm-x/src/b.tsx"
+    assert new and evidence[0]["path"] == "packages/esm-x/src/b.tsx" and "patient-chart/packages/esm-x/src/b.tsx" in text
+

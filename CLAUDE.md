@@ -28,10 +28,11 @@ Read these before changing anything substantial:
 
 - **Python 3.12.** Use the project venv: `.venv/bin/python` on Linux, or `.venv\Scripts\python` / `py -3.12` on Windows.
   - Install: `.venv/bin/python -m pip install -r requirements.txt`
-- **Settings:** come from `.env` (copy `.env.example`), read by `specbridge/env.py`. Real environment variables starting `BRAIN*`, `GEMINI_*` or `EMBED_*` override the file.
+- **Settings:** come from `.env` (copy `.env.example`), read by `specbridge/env.py`. Real environment variables starting `BRAIN*`, `GEMINI_*`, `EMBED_*` or `SLM_*` override the file.
 - **The repos SpecBridge reads** live outside this project, at `SPECBRIDGE_WORKDIR`:
   - Linux: `/home/qasim/Documents/sem3/AutoSE/Project/specbridge-work`
   - Windows: `C:/specbridge-work`
+  - macOS: `/Users/rajaitarunkanaiyalal/specbridge-work` (set up 2026-11-18 with `scripts/setup_workspace.py`; index copied from `data/specbridge_index.sqlite`)
   - Each repo is checked out on a `snapshot` branch at the frozen commit in `data/snapshots.json`. Never change those checkouts: the golden-ticket answer key depends on that exact "before" state.
 - **The code index** `specbridge_index.sqlite` sits in that same workdir, not in this repo. It holds keyword tables, links and vectors, and is rebuilt only when a frozen commit changes.
 
@@ -49,7 +50,8 @@ Read these before changing anything substantial:
 
 **1. The brain (`specbridge/brain.py`)**
 - The only way to call a model. Get one with `load_brain()`, then use `ask()` or `ask_json(prompt, schema)`.
-- Profiles are in `config/brains.json`. `BRAIN=llm` is Gemini called directly at Google's OpenAI-compatible endpoint with `GEMINI_API_KEY` (main model `gemini-3.6-flash` since 2026-11-11, when 3.8-flash kept hanging; per-role models in `roles`; OpenRouter was dropped on 2026-11-09). Google does not report cost, so `Reply.cost_usd` is estimated from `price_usd_per_mtok` (`cost_estimated=True`), `BRAIN=slm` is Ollama, and `BRAIN_MODEL` overrides the model.
+- Profiles are in `config/brains.json`. `BRAIN=llm` is Gemini called directly at Google's OpenAI-compatible endpoint with `GEMINI_API_KEY` (main model `gemini-3.6-flash` since 2026-11-11, when 3.8-flash kept hanging; per-role models in `roles`; OpenRouter was dropped on 2026-11-09). Google does not report cost, so `Reply.cost_usd` is estimated from `price_usd_per_mtok` (`cost_estimated=True`), and `BRAIN_MODEL` overrides the main model.
+- `BRAIN=slm` (ADR D29, [docs/DEPLOY_SLM.md](docs/DEPLOY_SLM.md)) is 3 small models on a Kaggle GPU: `qwen2.5-coder:14b` main, `qwen2.5-coder:7b` for worker search turns, `llama3.1:8b` reviewer. They run behind `scripts/slm_host.py` (a key check in front of Ollama) and a Cloudflare quick tunnel. `SLMHostBrain` submits each answer as a job and polls it, because the tunnel cuts requests after ~100 s. Settings: `SLM_BASE_URL` (changes every Kaggle session) and `SLM_API_KEY`. The host sets each model's context on every request; the worker's prompt sizes come from the profile (`worker_context_cap`, `evidence_chars`); `time_cap_seconds` is per brain in `config/agent.json`.
 - `ask_json` validates against a JSON schema and retries once, retries busy servers, and records tokens, cost and time per answer.
 - Gemini thinks before it answers, and the thinking counts against `max_tokens`, so give every call hundreds of tokens of headroom.
 

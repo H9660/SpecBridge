@@ -8,6 +8,7 @@ import json
 from specbridge.agent.worker import evidence as ev
 from specbridge.brain import schema_errors
 from specbridge.code_tools import TOOLS
+from specbridge.env import PROJECT
 
 NAMES = [t["name"] for t in TOOLS]
 ARGS = {t["name"]: {**t["input_schema"], "additionalProperties": False} for t in TOOLS}
@@ -17,6 +18,8 @@ MAX_READ_CHARS = 12_000      # about 3k tokens of code per read
 MAX_GREP = 15
 MAX_LINKS = 30
 MAX_SEARCH = 10
+REPOS = {r["name"] for r in json.loads((PROJECT / "config" / "repos.json").read_text(encoding="utf-8"))["repos"]}
+FILE_TOOLS = ("read_file", "find_usages")
 
 
 def parse_args(raw):
@@ -30,6 +33,18 @@ def parse_args(raw):
     return (value, None) if isinstance(value, dict) else (None, "args must be a JSON object")
 
 
+def fix_location(args):
+    """read_file / find_usages args with repo and path split at the real repo name. Search shows a file as one
+    string (core/packages/x/src/a.ts); small models often split it at the wrong '/' (repo "core/packages/x", path
+    "src/a.ts"). Joining and re-splitting changes nothing for a correct call, or when the first part is no repo."""
+    repo, path = str(args.get("repo") or "").strip().strip("/"), str(args.get("path") or "").strip().lstrip("./")
+    full = f"{repo}/{path}" if repo else path
+    first, _, rest = full.partition("/")
+    if first in REPOS and rest and (first, rest) != (args.get("repo"), args.get("path")):
+        return {**args, "repo": first, "path": rest}
+    return args
+
+
 def run(source, name, args, evidence, why=""):
     """(text for the AI, new evidence ids). Never raises: problems come back as a TOOL ERROR the AI can react to."""
     if name not in NAMES:
@@ -37,6 +52,8 @@ def run(source, name, args, evidence, why=""):
     problems = schema_errors(args, ARGS[name])
     if problems:
         return f"TOOL ERROR: bad arguments for {name}: {'; '.join(problems[:3])}", []
+    if name in FILE_TOOLS:
+        args = fix_location(args)
     try:
         result = source.call(name, args)
     except Exception as err:  # noqa: BLE001 - a broken tool call is the AI's problem to work around, not a crash
