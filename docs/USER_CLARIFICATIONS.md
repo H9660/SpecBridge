@@ -69,11 +69,13 @@ Questions asked during SpecBridge planning and what the user decided. Keep this 
 | 2026-11-18 | Ollama behind a key-checking proxy (one tunnel), or vLLM (built-in key, one tunnel per model)? | Ollama behind a key check (user took the recommendation). Built as `scripts/slm_host.py`. Answers are submitted as jobs and polled, so Cloudflare's 100 s request limit never applies. |
 | 2026-11-18 | Where is the SLM brain's test file kept? | `tests/test_slm_host.py`. Note: `tests/` is in `.gitignore`, so it must be added with `git add -f` (like the other tracked tests). |
 | 2026-11-07 | Create `.env` on the Linux laptop? | Created by Claude with only non-secret values (site `rooks101`, `SPEC`, `UAT`, `BRAIN=llm`, the Linux workdir). The user fills in `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN` and `OPENROUTER_API_KEY` themselves. |
+| 2026-11-27 | Scale the SLM brain over several Kaggle notebooks (3 now, any number later), with failover, retries, queueing and health checks? | Yes (user): ADR D31 accepted with one change, `retry_down_seconds` **30** (proposed 60). Built as a client-side `HostPool` (`specbridge/slm_pool.py`), no proxy: `SLM_BASE_URLS` lists the hosts (`SLM_BASE_URL` still works for one); `max_concurrency.slm` is `"auto"` (one worker per host); `GET /v1/status` on each host, `scripts/slm_pool.py status`, `GET /slm/health` on `serve.py`. Recommended and not contradicted: one shared `SLM_API_KEY` for all hosts, and each host on a different person's Kaggle account (Kaggle allows one account per person). |
 
 ## Still open
 
 | Asked | Question | Recommended |
 |---|---|---|
+| 2026-11-26 | Accept ADR D30 (`docs/adr/0030-pluggable-embedding-provider.md`): a small embedding-provider interface, vectors keyed by provider and model, adopt a new model only after scoring? No code changed yet. | Accept; build it before trying a code-specific model in Step 10 |
 | 2026-10-26 | Scope: SpecBridge (UAT test cases) first, full autonomous-coding plan, or SpecBridge only? | SpecBridge first; code-writing as optional later |
 | 2026-10-26 | Deadline (final class date) and how many teammates are building? | - |
 | 2026-10-26 | Budget for OpenRouter? (Default Gemini 3.8 Flash: ~$0.04 per ticket, ~$7 for 3 rounds of 63 tickets - estimate) | Set a spending limit on the OpenRouter key |

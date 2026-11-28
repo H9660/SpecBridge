@@ -18,6 +18,8 @@ One file per significant design decision: what was decided, why, what it costs, 
 | [D27](0027-publish-labels-version-guard-fallback.md) | publish: page found by labels, never overwrite a person's edit (draft as a page comment), one Jira comment, save locally on failure | Accepted | 2026-11-11 |
 | [D28](0028-jira-button-webhook-service.md) | A "Run SpecBridge" button in Jira: an Automation rule calls a small local service (secret, queue, daily limit) through a tunnel | Accepted | 2026-11-12 |
 | [D29](0029-slm-brain-on-kaggle-host.md) | The SLM brain: three small models on a Kaggle GPU behind a key check, reached as polled jobs through a tunnel | Accepted | 2026-11-18 |
+| [D30](0030-pluggable-embedding-provider.md) | Embeddings: local `nomic-embed-text` through Ollama, behind a small provider interface; vectors keyed by provider and model; a new model is adopted only after scoring | Proposed | 2026-11-26 |
+| [D31](0031-slm-host-pool.md) | The SLM brain uses a pool of any number of SLM hosts: the client picks the least-loaded healthy host, fails over, queues locally; health endpoints on each host and on the laptop; no proxy | Accepted | 2026-11-27 |
 
 ## Template
 

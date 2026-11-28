@@ -3,6 +3,7 @@ import json
 import time
 from dataclasses import dataclass, fields
 
+from specbridge import slm_pool
 from specbridge.env import PROJECT, load_env
 
 CONFIG = PROJECT / "config" / "agent.json"
@@ -76,6 +77,10 @@ def load_settings(env=None, config_path=CONFIG):
     for name, value in values.items():                     # a setting may give one value per brain
         if isinstance(value, dict):
             values[name] = value.get(brain, getattr(Settings, name))
+    if values.get("max_concurrency") == "auto":            # ADR D31: one worker per SLM host (x jobs_per_host)
+        max_workers = _check("max_workers", values.get("max_workers", Settings.max_workers))
+        values["max_concurrency"] = (slm_pool.auto_concurrency(env, max_workers) if brain == "slm"
+                                     else max_workers)
     return Settings(**{k: _check(k, v) for k, v in values.items()})
 
 

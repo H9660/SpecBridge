@@ -1,0 +1,4 @@
+1. Data is passed between the different nodes via the specbridge state object
+2. AI will not have any write access. Only the last node that pushes the pages to confluence has it. 
+3. To execute a stopped run from its last point we can use the checkpointer that is there in the sqlite.checkpointer
+4. When a limit is reached then status is incomplete and not an error

@@ -5,7 +5,8 @@ Usage:
   .venv/bin/python scripts/run_ticket.py https://rooks101.atlassian.net/browse/SPEC-12 --mode eval
   .venv/bin/python scripts/run_ticket.py --resume --run-id 20261107-101500-a1b2c3
 Options: --mode dry-run (default) | eval | live  (live publishes the page to Confluence and comments on the ticket);  --no-preflight skips the
-online brain check (offline work and tests);  --records-dir puts run records somewhere else.
+online brain check (offline work and tests);  --records-dir puts run records somewhere else;  --quiet hides the
+progress lines (each step, worker and tool call, with times) printed to stderr while the run works.
 Exit codes: 0 done, 1 the run failed, 2 refused before starting, 130 stopped with Ctrl-C.
 """
 import argparse
@@ -13,7 +14,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from specbridge.agent import run_record  # noqa: E402
+from specbridge.agent import console, run_record  # noqa: E402
 from specbridge.agent.graph import StartError, new_run_id, run_ticket  # noqa: E402
 from specbridge.agent.limits import SettingsError  # noqa: E402
 from specbridge.agent.nodes.intake import IntakeError  # noqa: E402
@@ -28,7 +29,11 @@ def main(argv=None):
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--no-preflight", action="store_true")
     parser.add_argument("--records-dir", type=pathlib.Path, default=run_record.RUNS)
+    parser.add_argument("--quiet", action="store_true", help="no progress lines while the run works")
     args = parser.parse_args(argv)
+    if not args.quiet:   # banner and progress lines go to stderr as the run works; the summary below still goes to stdout
+        use_color = console.install_progress_log(sys.stderr)
+        print(console.banner(use_color), file=sys.stderr)
 
     run_id = args.run_id or (None if args.resume else new_run_id())
     try:
@@ -53,6 +58,9 @@ def main(argv=None):
     if result.brain:
         b = result.brain
         print(f"brain:  {b['brain']} ({b['provider']} {b['model']})" + ("" if b["network_checked"] else ", not checked online"))
+        if len(b.get("hosts") or []) > 1:   # several SLM hosts (ADR D31)
+            usable = b.get("hosts_usable")
+            print(f"hosts:  {', '.join(b['hosts'])}" + ("" if usable is None else f" ({len(usable)} usable at start)"))
         for w in b.get("warnings", []):
             print(f"warning: {w}")
     ticket = result.state.get("ticket")

@@ -8,6 +8,7 @@ import re
 import time
 from dataclasses import asdict
 
+from specbridge import slm_pool
 from specbridge.env import PROJECT
 
 RUNS = PROJECT / "data" / "runs"
@@ -54,5 +55,8 @@ def write(state, settings, status, records_dir=RUNS, error=None, brain=None, not
         "brain": brain, "settings": asdict(settings), "frozen_commits": frozen_commits(),
         "state": {k: _kept(k, state.get(k)) for k in KEPT},
     }
+    pool = slm_pool.report_since(state.get("started_at")) if (brain or {}).get("brain") == "slm" else None
+    if pool:                     # ADR D31: answers per SLM host, and hosts going down / back / jobs moved in this run
+        record["slm_pool"] = pool
     path.write_text(json.dumps(record, indent=2, default=str), encoding="utf-8")
     return path

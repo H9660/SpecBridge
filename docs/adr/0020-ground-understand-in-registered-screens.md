@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-09
-- **Decided by:** the team (Qasim), after the first 43-ticket run of `understand`
+- **Decided by:** the team (Qasim and Hussain), after the first 43-ticket run of `understand`
 - **Related:** ARCHITECTURE.md D3 (ticket and code text are data), D5 (one code-reading interface), D8 (context budget); USER_CLARIFICATIONS.md 2026-11-09; `specbridge/agent/nodes/understand.py`, `prompts/understand.md` (`understand-v2`), `specbridge/code_index.py` (`screens_for`, `find_screen`)
 
 ## Context

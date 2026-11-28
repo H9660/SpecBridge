@@ -8,7 +8,6 @@
       "model": "gemini-3.6-flash",
       "api_key_env": "GEMINI_API_KEY",
       "structured_outputs": true,
-      "context_window": 1048576,
       "timeout_seconds": 180,
       "http_retries": 5,
       "price_usd_per_mtok": {
@@ -40,16 +39,23 @@
       "provider": "ollama",
       "base_url": "http://127.0.0.1:8000/v1",
       "base_url_env": "SLM_BASE_URL",
+      "base_urls_env": "SLM_BASE_URLS",
       "model": "qwen2.5-coder:14b",
       "api_key_env": "SLM_API_KEY",
       "structured_outputs": true,
-      "context_window": 32768,
       "worker_context_cap": 12000,
       "evidence_chars": 32000,
       "timeout_seconds": 1800,
       "unreachable_seconds": 120,
       "poll_seconds": 2,
       "http_retries": 2,
+      "pool": {
+        "jobs_per_host": 1,
+        "health_seconds": 15,
+        "down_after_failures": 2,
+        "retry_down_seconds": 30,
+        "note": "Several SLM hosts (ADR D31, specbridge/slm_pool.py): SLM_BASE_URLS lists them (name=url, comma-separated). jobs_per_host: this process's jobs per host at once (each host runs one at a time). A host is down after down_after_failures failed requests in a row and checked again after retry_down_seconds; healthy hosts are checked every health_seconds."
+      },
       "note": "The SLM host (scripts/slm_host.py, ADR D29, docs/DEPLOY_SLM.md): Ollama on a Kaggle GPU (T4 x2) behind a key check and a Cloudflare quick tunnel. SLM_BASE_URL is the address the host prints (base_url is the host run on this laptop with --no-tunnel); SLM_API_KEY is the host's key. Answers are jobs that are polled, so the tunnel's ~100 s limit never applies. The context sizes per model are set by the host (--models); worker_context_cap and evidence_chars keep the worker's prompts inside them. No cost is reported (the GPU is free), so cost_usd is empty.",
       "roles": {
         "worker_agent": {

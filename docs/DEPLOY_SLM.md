@@ -76,6 +76,38 @@ To go back to Gemini, set `BRAIN=llm`. The `SLM_*` lines can stay.
 
 The Jira button (`scripts/serve.py`, [DEPLOY_JIRA.md](DEPLOY_JIRA.md)) uses the same `.env`, so it runs on the SLM too. Its "generating" comment then says 5-15 minutes instead of 2-5.
 
+## 4. Several hosts (optional, ADR D31)
+
+More notebooks make a ticket faster (one worker per host at once) and keep runs going if one notebook stops. There is no limit on how many. The laptop shares the work between them; no extra server is needed.
+
+| Step | Where |
+|---|---|
+| Each host runs on a **different person's** Kaggle account. Kaggle allows one account per person, so several accounts of your own risk a ban. | teammates |
+| Every notebook uses the **same** `SLM_API_KEY` secret and the same models. | Kaggle Secrets |
+| Give each host a name: `!python .../slm_host.py --name kaggle-a` (then `kaggle-b`, ...). | the notebook cell |
+| List every address in one line, `name=address`, comma-separated. It replaces `SLM_BASE_URL`. | laptop `.env` |
+| Check them: `.venv/bin/python scripts/slm_pool.py status` (`--watch` to keep checking). | laptop |
+
+```
+BRAIN=slm
+SLM_BASE_URLS=kaggle-a=https://<a>.trycloudflare.com/v1,kaggle-b=https://<b>.trycloudflare.com/v1,kaggle-c=https://<c>.trycloudflare.com/v1
+SLM_API_KEY=<the same secret on every host>
+```
+
+What the laptop does with them:
+
+| Situation | What happens |
+|---|---|
+| Normal | Each answer goes to the least busy healthy host. `max_concurrency` is `"auto"`: as many workers at once as there are hosts. |
+| Every host is busy | The call waits its turn on the laptop (first come, first served), then goes to the first host that is free. |
+| A host stops (notebook closed, tunnel gone) | After 2 failed requests in a row it is marked down and skipped; jobs it had are sent to another host. It is checked again every 30 s and used again when it answers. |
+| A host has the wrong key or misses a model | It is left out, with a warning at the start of the run. |
+| Every host is down | The call waits up to 120 s for one to come back, then the run stops with one line per host saying why. |
+
+`status` prints one line per host: state, jobs waiting and running, answers and errors from this laptop, when it last answered, and the round-trip time. The Jira service shows the same at `GET /slm/health` (it needs the `X-SpecBridge-Secret` header, and shows host names, not addresses). The run record lists the answers per host and any host that went down or came back during the run (`slm_pool`).
+
+After a notebook restarts, its tunnel address changes: update that one entry in `SLM_BASE_URLS`. `status` shows which entry is stale.
+
 ## What to expect
 
 | | Gemini (`llm`) | SLM host (`slm`) |

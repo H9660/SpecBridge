@@ -18,6 +18,8 @@ id sent twice runs once. Jobs run one at a time, in order (the agent runs one wo
 
 Endpoints (all but /health need "Authorization: Bearer <key>"):
   GET  /health                  {"ok": true}
+  GET  /v1/status               name, version, uptime, ready, models (context, pulled), queued / running / done /
+                                errors, max_jobs, gpu: what SpecBridge's host pool reads to pick a host (ADR D31)
   GET  /v1/models               the served models Ollama has, OpenAI style (used by SpecBridge's preflight)
   POST /v1/jobs                 {"id", "request": <OpenAI chat request>} -> the job's state
   GET  /v1/jobs/<id>            {"id", "status": queued|running|done|error|cancelled, "http_status", "result"}
@@ -54,6 +56,7 @@ MIN_ANSWER_TOKENS = 1024       # room always left for the answer
 CHARS_PER_TOKEN_LOW = 3        # code and JSON: about 3 characters per token at worst (used to leave room)
 CHARS_PER_TOKEN_HIGH = 4       # English: about 4 (a prompt is refused only if it is too long even at this rate)
 OLLAMA_TIMEOUT = 1800
+VERSION = "2"                  # 2: GET /v1/status and --name (ADR D31)
 CLOUDFLARED = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
 TUNNEL_URL = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
 
@@ -141,13 +144,15 @@ def from_ollama(resp, model):
 # --- the host: jobs in front of Ollama -----------------------------------------------------------------------
 
 class Host:
-    def __init__(self, ollama_url, models, key, workers=1, ollama_timeout=OLLAMA_TIMEOUT):
+    def __init__(self, ollama_url, models, key, workers=1, ollama_timeout=OLLAMA_TIMEOUT, name=None, gpu=""):
         if len(key) < 16:
             raise SystemExit("the key must be at least 16 characters")
         self.ollama_url, self.models, self.ollama_timeout = ollama_url.rstrip("/"), dict(models), ollama_timeout
         self._auth = f"Bearer {key}".encode()
         self.jobs, self.lock, self.queue = {}, threading.Lock(), queue.Queue()
         self.counts = {"done": 0, "error": 0}
+        self.name = name or os.environ.get("SLM_HOST_NAME") or (os.uname().nodename if hasattr(os, "uname") else "host")
+        self.gpu, self.started = gpu, time.time()
         for _ in range(workers):
             threading.Thread(target=self._work, daemon=True).start()
 
@@ -166,6 +171,23 @@ class Host:
         have = {m.get("name") for m in tags} | {m.get("model") for m in tags}
         return {"object": "list", "data": [{"id": m, "object": "model", "owned_by": "ollama", "context": ctx}
                                            for m, ctx in self.models.items() if m in have]}
+
+    def status(self):
+        """What the laptop's host pool reads (ADR D31): load, readiness and models. Never raises."""
+        try:
+            tags = self.ollama("GET", "/api/tags", timeout=5).get("models", [])
+            have, ollama_ok = {m.get("name") for m in tags} | {m.get("model") for m in tags}, True
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+            have, ollama_ok = set(), False
+        with self.lock:
+            queued = sum(1 for j in self.jobs.values() if j["status"] == "queued")
+            running = sum(1 for j in self.jobs.values() if j["status"] == "running")
+            counts = dict(self.counts)
+        models = {m: {"context": ctx, "pulled": m in have} for m, ctx in self.models.items()}
+        return {"name": self.name, "version": VERSION, "uptime_seconds": round(time.time() - self.started),
+                "ready": ollama_ok and all(v["pulled"] for v in models.values()), "ollama": ollama_ok,
+                "models": models, "queued": queued, "running": running, "done": counts["done"],
+                "errors": counts["error"], "max_jobs": MAX_JOBS, "gpu": self.gpu}
 
     def run_chat(self, req):
         """(HTTP status, body). Never raises."""
@@ -300,6 +322,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"ok": True})
         if not self._allowed():
             return None
+        if path == "/v1/status":
+            return self._send(200, host.status())
         if path == "/v1/models":
             try:
                 return self._send(200, host.served_models())
@@ -485,12 +509,14 @@ def get_key(given):
         return secrets.token_urlsafe(32), "made up"
 
 
-def banner(url, key, source):
+def banner(url, key, source, name="host"):
     line = "=" * 78
-    print(f"\n{line}\nSLM host is ready. Put these two lines in SpecBridge's .env (BRAIN=slm):\n", flush=True)
+    print(f"\n{line}\nSLM host '{name}' is ready. Put these lines in SpecBridge's .env (BRAIN=slm):\n", flush=True)
     print(f"SLM_BASE_URL={url}/v1")
     print(f"SLM_API_KEY={key if source == 'made up' else '<the key you stored as SLM_API_KEY (' + source + ')>'}")
-    print("\nThen check it from the laptop:  .venv/bin/python scripts/run_ticket.py SPEC-1 --mode dry-run\n"
+    print(f"\nSeveral hosts (ADR D31): add this one to the comma-separated list instead of SLM_BASE_URL:\n"
+          f"  SLM_BASE_URLS=...,{name}={url}/v1")
+    print("\nThen check it from the laptop:  .venv/bin/python scripts/slm_pool.py status\n"
           "Keep this cell running. If the tunnel restarts, a new address is printed here.\n" + line, flush=True)
 
 
@@ -504,31 +530,34 @@ def main(argv=None):
     p.add_argument("--no-pull", action="store_true", help="do not pull the models")
     p.add_argument("--no-tunnel", action="store_true", help="serve on 127.0.0.1 only (laptop use)")
     p.add_argument("--work-dir", default=str(Path.home() / ".cache" / "specbridge-slm"))
+    p.add_argument("--name", help="this host's name in the laptop's SLM_BASE_URLS and status lines, e.g. kaggle-a "
+                                  "(default: SLM_HOST_NAME, else the machine's name)")
     a = p.parse_args(argv)
 
     models, work = parse_models(a.models), Path(a.work_dir)
     work.mkdir(parents=True, exist_ok=True)
     key, source = get_key(a.key)
-    log(gpu_summary())
+    gpu = gpu_summary()
+    log(gpu)
     if not a.no_install:
         install_ollama()
     ollama_proc = None if ollama_up(a.ollama_url) else start_ollama(a.ollama_url, models, work)
     if not a.no_pull:
         for m in models:
             pull(a.ollama_url, m)
-    host = Host(a.ollama_url, models, key)
+    host = Host(a.ollama_url, models, key, name=a.name, gpu=gpu)
     for m in models:
         warm_up(host, m)
     server = make_server(host, a.port)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    log(f"key-checking server on http://127.0.0.1:{a.port} (key: {source}); models: {models}")
+    log(f"key-checking server '{host.name}' on http://127.0.0.1:{a.port} (key: {source}); models: {models}")
 
     tunnel = None
     if a.no_tunnel:
-        banner(f"http://127.0.0.1:{a.port}", key, source)
+        banner(f"http://127.0.0.1:{a.port}", key, source, host.name)
     else:
         tunnel = Tunnel(cloudflared_binary(work), a.port, work)
-        banner(tunnel.start(), key, source)
+        banner(tunnel.start(), key, source, host.name)
 
     last_beat = time.time()
     try:
@@ -539,7 +568,7 @@ def main(argv=None):
                 ollama_proc = start_ollama(a.ollama_url, models, work)
             if tunnel is not None and not tunnel.alive():
                 log("the tunnel stopped; starting a new one (new address below)")
-                banner(tunnel.start(), key, source)
+                banner(tunnel.start(), key, source, host.name)
             if time.time() - last_beat > 600:
                 with host.lock:
                     waiting = sum(1 for j in host.jobs.values() if j["status"] in ("queued", "running"))

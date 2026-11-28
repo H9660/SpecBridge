@@ -45,9 +45,14 @@ def check_brain(env=None, network=True, fetch=fetch_json):
     if brain.profile.get("price_usd_per_mtok"):
         info["warnings"].append(f"{brain.provider} does not report cost; costs shown are estimates at list price "
                                 "(the free tier costs $0)")
+    info["warnings"] += brain.profile.get("warnings", [])
+    if brain.profile.get("api") == "slm-host":
+        info["hosts"] = [name for name, _ in brain.profile.get("hosts", [])]
     if not network:
         return info
     auth = {"Authorization": f"Bearer {brain._api_key}"} if brain._api_key else {}
+    if brain.profile.get("api") == "slm-host" and len(brain.profile.get("hosts", [])) > 1:
+        return _check_slm_hosts(brain, info, auth, fetch)
     try:
         models = fetch(f"{brain.base_url}/models", auth).get("data", [])
     except HTTPStatus as err:
@@ -67,15 +72,52 @@ def check_brain(env=None, network=True, fetch=fetch_json):
         raise PreflightError(f"cannot reach {brain.provider} at {brain.base_url} ({_reason(err)}); "
                              f"{network_hint(err)}, or use --no-preflight for offline work") from None
     ids = {(m.get("id") or "").removeprefix("models/") for m in models}
-    if brain.model not in ids:
+    needed = slm_models(brain) if brain.profile.get("api") == "slm-host" else [brain.model]
+    missing = [m for m in needed if m not in ids]
+    if missing:
         where = ("the SLM host has not pulled it: add it to scripts/slm_host.py --models and restart the host"
                  if brain.provider == "ollama" else "check BRAIN_MODEL / config/brains.json")
-        raise PreflightError(f"model {brain.model!r} is not offered by {brain.provider}; {where}")
+        raise PreflightError(f"model {missing[0]!r} is not offered by {brain.provider}; {where}")
     return info
 
 
 def _reason(err):
     return getattr(err, "reason", None) or type(err).__name__
+
+
+def slm_models(brain):
+    """Every model a run needs from the SLM hosts: the main one and each role's (worker, reviewer)."""
+    return [brain.model] + [r["model"] for r in brain.profile.get("roles", {}).values()
+                            if r.get("model") and r["model"] != brain.model]
+
+
+def _check_slm_hosts(brain, info, auth, fetch):
+    """Several SLM hosts (ADR D31): each is asked for its models in turn. A run can start if at least one host has
+    every model it needs; each other host gets a warning saying why it is left out."""
+    needed, usable, problems = slm_models(brain), [], {}
+    for name, url in brain.profile["hosts"]:
+        try:
+            ids = {(m.get("id") or "") for m in fetch(f"{url}/models", auth).get("data", [])}
+        except HTTPStatus as err:
+            problems[name] = ("refused " + brain.profile.get("api_key_env", "the key")) if err.code in (400, 401, 403) \
+                else f"answered HTTP {err.code}"
+            continue
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as err:
+            problems[name] = f"cannot be reached ({_reason(err)})"
+            continue
+        missing = [m for m in needed if m not in ids]
+        if missing:
+            problems[name] = f"has not pulled {', '.join(missing)}"
+        else:
+            usable.append(name)
+    info["hosts_usable"] = usable
+    info["warnings"] += [f"SLM host {n} is left out: {p}" for n, p in problems.items()]
+    if not usable:
+        where = brain.profile.get("hosts_env", "SLM_BASE_URLS")
+        raise PreflightError(f"no SLM host can be used ({'; '.join(f'{n}: {p}' for n, p in problems.items())}); are "
+                             f"the Kaggle notebooks running, with the same key and models, and does {where} hold "
+                             "the addresses they printed last? (docs/DEPLOY_SLM.md)")
+    return info
 
 
 def check_atlassian(env=None, network=True, client_factory=None):

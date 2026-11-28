@@ -9,6 +9,7 @@ run, runs the graph with a checkpointer, and writes the run record however the r
 Nodes are plain functions `node(state, settings)`; `build_graph` takes replacements, which is how
 tests use fakes and each real node replaces its placeholder.
 """
+import logging
 import os
 import re
 import sqlite3
@@ -31,6 +32,7 @@ DEFAULT_NODES = {"intake": intake.node, "understand": understand.node, "clarify"
                  "e2e_worker": e2e_worker.run, "merge": merge.node, "reviewer": reviewer.node,
                  "render": render.node}
 MAX_REF_CHARS = 2000
+progress = logging.getLogger("specbridge.progress")   # silent unless the caller adds a handler (run_ticket.py does)
 RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
@@ -48,11 +50,39 @@ class RunResult:
     message: str = ""
 
 
+def _summary(name, out):
+    """A short line about what a main node produced, for the progress log."""
+    try:
+        if name == "understand" and out.get("understanding"):
+            u = out["understanding"]
+            return f"{len(u.get('criteria', []))} criteria, testable: {'yes' if u.get('testable') else 'no'}"
+        if name == "orchestrator":
+            n = len(out.get("work_items") or [])
+            return f"{n} worker(s) planned" + (" + e2e worker" if out.get("e2e") else "")
+        if name == "merge" and out.get("plan"):
+            return f"{len(out['plan'].get('cases', []))} cases after merge"
+        if name == "reviewer" and out.get("review"):
+            r = out["review"]
+            return f"criteria ok {r.get('criteria_ok', '?')}" + \
+                (f"; retrying {len(r['retry'])} criteria" if r.get("retry") else "; final")
+        if name == "publish" and out.get("published"):
+            p = out["published"]
+            return f"error: {p['error']}" if p.get("error") else f"page {p.get('page_action', '')} {p.get('page_url', '')}"
+        if name == "save_local" and out.get("saved"):
+            return f"saved to {out['saved'].get('folder', '')}"
+    except (TypeError, KeyError, AttributeError):
+        pass
+    return ""
+
+
 def _main_node(name, fn, settings):
     def wrapped(state):
         t0 = time.time()
+        progress.info("-> %s", name)
         out = dict(fn(state, settings) or {})
         dt = time.time() - t0
+        detail = _summary(name, out)
+        progress.info("   %s done in %.1fs%s", name, dt, f" - {detail}" if detail else "")
         out["spent"] = add_spent(out.get("spent"), {"seconds": dt})
         out["trace"] = [{"node": name, "round": out.get("round", state.get("round", 0)), "seconds": round(dt, 4)}]
         return out
@@ -65,6 +95,7 @@ def _worker_node(name, fn, settings):
     def wrapped(payload):
         t0 = time.time()
         item = payload["work_item"]
+        progress.info("-> worker %s started (%s)", item["id"], ", ".join(item["criterion_ids"]))
         try:
             result = dict(fn(payload, settings))
         except Exception as err:  # noqa: BLE001 - one failed worker must not stop the others
@@ -73,6 +104,8 @@ def _worker_node(name, fn, settings):
                       "questions": [], "notes": [], "error": f"{type(err).__name__}: {str(err)[:300]}"}
         spent = result.pop("spent", {}) or {}
         dt = time.time() - t0
+        progress.info("   worker %s %s in %.1fs - %d case(s)%s", item["id"], result.get("status"), dt,
+                      len(result.get("cases") or []), f" ({result['error']})" if result.get("error") else "")
         return {"results": [result], "spent": add_spent({k: v for k, v in spent.items() if k in ("tokens", "cost")},
                                                         {"seconds": dt}),
                 "trace": [{"node": name, "round": payload.get("round", 1), "seconds": round(dt, 4),
@@ -169,13 +202,12 @@ def _ready_records_dir(records_dir):
 def run_ticket(ticket_ref=None, mode="dry-run", run_id=None, resume=False, preflight_check=True, *,
                settings=None, nodes=None, checkpointer=None, records_dir=run_record.RUNS, env=None,
                brain_check=preflight.check_brain, atlassian_check=preflight.check_atlassian, interrupt_before=None):
-    """START a run (or continue one with resume=True and its run_id) and return a RunResult.
-
+    """
     Refusals before a run exists raise StartError, SettingsError or PreflightError and write nothing.
     Once the run exists, a record is written however it ends; a crash or Ctrl-C is re-raised after that.
     """
     ref = _check_request(ticket_ref, mode, run_id, resume)
-    settings = settings or load_settings(env)
+    settings = settings or load_settings(env) # This will try to use the os env vars as well if they are
     _ready_records_dir(records_dir)
     checkpointer = checkpointer or sqlite_checkpointer(records_dir)
     run_id = run_id or new_run_id()

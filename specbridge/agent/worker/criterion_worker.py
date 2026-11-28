@@ -16,6 +16,7 @@ summary of every criterion, confirms screens and navigation with its few tool ca
 prompts/e2e.md, and each flow must span at least 2 criteria.
 """
 import json
+import logging
 import threading
 from typing import TypedDict
 
@@ -32,6 +33,7 @@ from specbridge.env import PROJECT, load_env
 AGENT_PROMPT = PROJECT / "prompts" / "worker_agent.md"
 CASES_PROMPT = PROJECT / "prompts" / "write_cases.md"
 E2E_PROMPT = PROJECT / "prompts" / "e2e.md"
+progress = logging.getLogger("specbridge.progress")   # silent unless the caller adds a handler (run_ticket.py does)
 MAX_FLOWS = 3
 AGENT_MAX_TOKENS = 2000
 CASES_MAX_TOKENS = 8000
@@ -307,6 +309,9 @@ def build(agent_brain, writer_brain, source):
         action = state["action"]
         evidence = [dict(e) for e in state["evidence"]]
         args, problem = tl.parse_args(action.get("args_json"))
+        shown = problem or ", ".join(f"{k}={str(v)[:60]}" for k, v in (args or {}).items())
+        progress.info("   worker %s tool %d/%d: %s(%s)", state["work_item"]["id"], state["tool_calls"] + 1,
+                      state["work_item"]["budget"]["tool_calls"], action["action"], shown)
         text, _ = (f"TOOL ERROR: {problem}", []) if problem else \
             tl.run(source, action["action"], args, evidence, why=_safe(action.get("thought", ""))[:160])
         messages, n = ev.compact(state["messages"] + [{"role": "user", "content": text}], context_cap)
@@ -318,6 +323,8 @@ def build(agent_brain, writer_brain, source):
         if not state["evidence"]:
             return {"draft": {"cases": [], "flows": [], "untestable": [], "questions": [], "notes": [],
                               "missing": "no code was read, so no test case could be grounded"}}
+        progress.info("   worker %s writing test cases from %d piece(s) of code (stop: %s)", state["work_item"]["id"],
+                      len(state["evidence"]), state.get("stop") or "done")
         version, instructions = load_prompt(E2E_PROMPT if e2e else CASES_PROMPT)
         user = cases_message(state["brief"], state["work_item"], state["evidence"], evidence_chars)
         try:

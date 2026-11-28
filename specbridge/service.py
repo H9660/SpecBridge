@@ -233,6 +233,14 @@ class Service:
         with self.lock:
             return {"ok": True}
 
+    def slm_health(self):
+        """The SLM hosts as GET /slm/health shows them (ADR D31): checked now, names only, never addresses."""
+        from specbridge import slm_pool
+        try:
+            return slm_pool.health_report(self.env, with_url=False)
+        except Exception as err:  # noqa: BLE001 - a settings problem is shown, never a crash of the service
+            return {"brain": self.env.get("BRAIN") or "llm", "error": _short(err), "hosts": []}
+
 
 def make_handler(service):
     class Handler(BaseHTTPRequestHandler):
@@ -251,6 +259,11 @@ def make_handler(service):
         def do_GET(self):
             if self.path == "/health":
                 return self._send(200, service.status())
+            if self.path == "/slm/health":       # ADR D31: needs the secret; host names only, never addresses
+                given = self.headers.get(SECRET_HEADER, "")
+                if not hmac.compare_digest(given.encode("utf-8"), service.secret.encode("utf-8")):
+                    return self._send(401, {"error": "missing or wrong secret"})
+                return self._send(200, service.slm_health())
             if self.path == "/run":
                 return self._send(405, {"error": "use POST"})
             return self._send(404, {"error": "not found"})
